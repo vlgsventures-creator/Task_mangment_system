@@ -77,6 +77,62 @@ def rescheduled_tasks_page():
 @app.route("/api/rescheduled_tasks", methods=["GET"])
 def get_rescheduled_tasks_alias():
     return get_admin_reschedule_requests()
+
+
+#------------------------------------------
+# Database Tables Create Karne Ka Function
+def init_db():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # 1. Employees Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                role VARCHAR(50) DEFAULT 'Employee',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 2. Tasks Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                assigned_to INT REFERENCES employees(id) ON DELETE CASCADE,
+                deadline TIMESTAMP,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 3. Reschedule Requests Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS reschedule_requests (
+                id SERIAL PRIMARY KEY,
+                task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
+                employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
+                proposed_deadline TIMESTAMP,
+                reason TEXT,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("✅ Database tables created successfully!")
+    except Exception as e:
+        print("❌ DB Init Error:", e)
+
+# App start hote hi tables create honge
+with app.app_context():
+    init_db()
 # --------------------------------------------
 # Notification & Push Helper Function
 # --------------------------------------------
@@ -375,7 +431,13 @@ def employee_tasks(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#-----------------
 
+import os
+db_url = os.getenv("DATABASE_URL")
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+#---------------
 @app.route("/api/update_task_status", methods=["POST"])
 def update_task_status_post():
     try:
