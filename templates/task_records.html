@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Records | VLGS</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+<link rel="manifest" href="/static/manifest.json">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+    });
+  });
+</script>
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:#f5f7fb;
+    color:#222;
+}
+
+/* Header */
+.header{
+    background:#fff;
+    padding:18px 25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 5px 20px rgba(0,0,0,.06);
+    position:sticky;
+    top:0;
+    z-index:999;
+}
+
+.left{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.back{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    background:#edf3ff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:#0d6efd;
+    font-size:18px;
+    transition:.3s;
+}
+
+.back:hover{
+    background:#0d6efd;
+    color:#fff;
+}
+
+.title h2{
+    font-size:24px;
+}
+
+.title p{
+    font-size:13px;
+    color:#777;
+}
+
+.refresh{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    background:#edf3ff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    cursor:pointer;
+    color:#0d6efd;
+    font-size:18px;
+    transition:.3s;
+}
+
+.refresh:hover{
+    background:#fd650d;
+    color:white;
+}
+
+/* Container */
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:25px;
+}
+
+/* Cards */
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:18px;
+    margin-bottom:25px;
+}
+
+.card{
+    background:#fff;
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 8px 25px rgba(0,0,0,.06);
+}
+
+.card h5{
+    font-size:14px;
+    color:#110d0d;
+    margin-bottom:8px;
+    font-weight:500;
+}
+
+.card h2{
+    font-size:34px;
+    color:#7a4918;
+}
+
+/* Toolbar */
+.toolbar{
+    display:flex;
+    margin-bottom:20px;
+}
+
+.search{
+    flex:1;
+    position:relative;
+}
+
+.search input{
+    width:100%;
+    padding:14px 18px 14px 50px;
+    border:none;
+    outline:none;
+    border-radius:14px;
+    background:white;
+    box-shadow:0 5px 18px rgba(0,0,0,.06);
+    font-size:15px;
+}
+
+.search i{
+    position:absolute;
+    left:18px;
+    top:16px;
+    color:#888;
+}
+
+/* Table Inline Filters styling */
+.table-box{
+    background:#fff;
+    border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.06);
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1100px;
+}
+
+thead{
+    background:#743f28;
+    color:white;
+}
+
+th{
+    padding:14px 12px;
+    font-weight:600;
+    font-size:14px;
+    text-align:left;
+    vertical-align: middle;
+}
+
+/* Header elements styling */
+.header-filter-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.header-filter-box span {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.header-select, .header-date {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.header-select option {
+    background: #ffffff;
+    color: #222;
+}
+
+.header-date::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+/* --- MULTI SELECT DROPDOWN STYLES --- */
+.multiselect-container {
+    position: relative;
+    width: 100%;
+}
+
+.select-btn {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 12px;
+    font-weight: 400;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    min-width: 180px;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+    z-index: 100;
+    padding: 5px 0;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    color: #222;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+td{
+    padding:18px 12px;
+    border-bottom:1px solid #eee;
+    font-size:14px;
+}
+
+tbody tr:hover{
+    background:#f8fbff;
+}
+
+/* Status Badges */
+.badge{
+    padding:5px 12px;
+    border-radius:30px;
+    font-size:12px;
+    font-weight:600;
+    display:inline-block;
+}
+
+.pending{ background:#fff4d6; color:#c68a00; }
+.ongoing{ background:#dceeff; color:#0066d6; }
+.completed{ background:#dff7e5; color:#11863d; }
+.overdue{ background:#ffe0e0; color:#d40000; }
+
+@media(max-width:768px){
+    .header{ padding:15px; }
+    .title h2{ font-size:20px; }
+    .container{ padding:15px; }
+    .cards{ grid-template-columns:repeat(2,1fr); }
+    .card{ padding:16px; }
+    .card h2{ font-size:24px; }
+}
+</style>
+</head>
+
+<body>
+<header class="header">
+    <div class="left">
+        <div class="back" onclick="window.location.href='/admin'">
+            <i class="fa-solid fa-arrow-left"></i>
+        </div>
+        <div class="title">
+            <h2>Task Records</h2>
+            <p>Manage all assigned tasks</p>
+        </div>
+    </div>
+    <div class="refresh" id="refreshBtn">
+        <i class="fa-solid fa-rotate-right"></i>
+    </div>
+</header>
+
+<div class="container">
+    <div class="cards">
+    <div class="card">
+        <h5>Total Tasks</h5>
+        <h2 id="totalTasks">0</h2>
+    </div>
+    <div class="card">
+        <h5>Pending</h5>
+        <h2 id="pendingTasks">0</h2>
+    </div>
+    <div class="card">
+        <h5>Ongoing</h5>
+        <h2 id="ongoingTasks">0</h2>
+    </div>
+    <div class="card">
+        <h5>Completed</h5>
+        <h2 id="completedTasks">0</h2>
+    </div>
+
+    <div class="card" onclick="window.location.href='/rescheduled_tasks_page'" style="cursor:pointer; background:#fff3cd; border: 1px solid #ffeba8;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h5 style="color:#856404;">Rescheduled Tasks</h5>
+                <h2 id="rescheduledTasks" style="color:#856404;">0</h2>
+            </div>
+            <i class="fa-solid fa-arrow-right-long" style="font-size:20px; color:#856404;"></i>
+        </div>
+    </div>
+</div>
+
+    <div class="toolbar">
+        <div class="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="Global search title or description...">
+        </div>
+    </div>
+
+    <div class="table-box">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 70px;">ID</th>
+                    
+                    <th style="width: 180px;">
+                        <div class="header-filter-box">
+                            <span>Employee</span>
+                            <div class="multiselect-container">
+                                <div class="select-btn" id="empSelectBtn">
+                                    <span id="empBtnText">All Employees</span>
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </div>
+                                <div class="dropdown-content" id="empDropdown">
+                                    </div>
+                            </div>
+                        </div>
+                    </th>
+                    
+                    <th>Task Title</th>
+                    <th>Description</th>
+                    <th style="width: 160px;">
+                        <div class="header-filter-box">
+                            <span>Created At</span>
+                            <input type="date" id="headerCreatedFilter" class="header-date">
+                        </div>
+                    </th>
+                    <th style="width: 150px;">
+                        <div class="header-filter-box">
+                            <span>Status</span>
+                            <select id="headerStatusFilter" class="header-select">
+                                <option value="">All Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Ongoing">Ongoing</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Overdue">Overdue</option>
+                            </select>
+                        </div>
+                    </th>
+
+                    <th style="width: 160px;">
+                        <div class="header-filter-box">
+                            <span>Deadline</span>
+                            <input type="date" id="headerDeadlineFilter" class="header-date">
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="taskTable">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let allTasks = [];
+let selectedEmployees = [];
+
+window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("searchInput").addEventListener("keyup", applyAllFilters);
+    document.getElementById("headerStatusFilter").addEventListener("change", applyAllFilters);
+    document.getElementById("headerDeadlineFilter").addEventListener("change", applyAllFilters);
+    document.getElementById("headerCreatedFilter").addEventListener("change", applyAllFilters);
+    document.getElementById("refreshBtn").addEventListener("click", loadTasks);
+
+    // Toggle Multi-select Dropdown
+    const selectBtn = document.getElementById("empSelectBtn");
+    const dropdown = document.getElementById("empDropdown");
+
+    selectBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle("show");
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".multiselect-container")) {
+            dropdown.classList.remove("show");
+        }
+    });
+
+    loadTasks();
+});
+
+async function loadTasks() {
+    try {
+        const response = await fetch("/api/task_records");
+        if (!response.ok) throw new Error("API Error");
+
+        allTasks = await response.json();
+        
+        populateEmployeeDropdown(allTasks);
+        renderTable(allTasks);
+        updateCards(allTasks);
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById("taskTable").innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;padding:25px;color:red;font-weight:500;">
+                    Failed to load records. Check Server Connection.
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Populates dropdown with Checkboxes
+function populateEmployeeDropdown(tasks) {
+    const dropdown = document.getElementById("empDropdown");
+    const uniqueEmployees = [...new Set(tasks.map(t => t.employee).filter(Boolean))].sort();
+
+    dropdown.innerHTML = "";
+    selectedEmployees = []; // Reset selections
+
+    uniqueEmployees.forEach(emp => {
+        const item = document.createElement("label");
+        item.className = "dropdown-item";
+        item.innerHTML = `
+            <input type="checkbox" value="${emp}" class="emp-checkbox">
+            ${emp}
+        `;
+        dropdown.appendChild(item);
+    });
+
+    // Add Change Listeners to Checkboxes
+    document.querySelectorAll(".emp-checkbox").forEach(chk => {
+        chk.addEventListener("change", handleEmployeeSelection);
+    });
+
+    updateBtnText();
+}
+
+function handleEmployeeSelection() {
+    const checked = document.querySelectorAll(".emp-checkbox:checked");
+    selectedEmployees = Array.from(checked).map(c => c.value);
+    
+    updateBtnText();
+    applyAllFilters();
+}
+
+function updateBtnText() {
+    const btnText = document.getElementById("empBtnText");
+    if (selectedEmployees.length === 0) {
+        btnText.innerText = "All Employees";
+    } else if (selectedEmployees.length === 1) {
+        btnText.innerText = selectedEmployees[0];
+    } else {
+        btnText.innerText = `${selectedEmployees.length} Selected`;
+    }
+}
+
+function formatDateTime(dateString) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; 
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${day}-${month}-${year} | ${hours}:${minutes}:${seconds}`;
+}
+
+function applyAllFilters() {
+    const globalSearchValue = document.getElementById("searchInput").value.toLowerCase();
+    const statusFilterValue = document.getElementById("headerStatusFilter").value;
+    const deadlineFilterValue = document.getElementById("headerDeadlineFilter").value;
+    const createdFilterValue = document.getElementById("headerCreatedFilter").value;
+
+    const filtered = allTasks.filter(task => {
+        // 1. Global Search Box Match
+        const matchGlobal = (task.title || "").toLowerCase().includes(globalSearchValue) || 
+                            (task.description || "").toLowerCase().includes(globalSearchValue);
+        
+        // 2. Multi Employee Match
+        const matchEmp = selectedEmployees.length === 0 || selectedEmployees.includes(task.employee);
+        
+        // 3. Inline Status Match
+        const matchStatus = !statusFilterValue || (task.status || "").toLowerCase() === statusFilterValue.toLowerCase();
+        
+        // 4. Inline Deadline Match
+        let matchDeadline = true;
+        if (deadlineFilterValue) {
+            const taskDeadlineDate = (task.deadline || "").split(" ")[0];
+            matchDeadline = taskDeadlineDate === deadlineFilterValue;
+        }
+        
+        // 5. Inline Created At Date Match
+        let matchCreated = true;
+        if (createdFilterValue) {
+            const taskCreatedDate = (task.created_at || "").split(" ")[0];
+            matchCreated = taskCreatedDate === createdFilterValue;
+        }
+
+        return matchGlobal && matchEmp && matchStatus && matchDeadline && matchCreated;
+    });
+
+    renderTable(filtered);
+    updateCards(filtered);
+}
+
+function renderTable(tasks) {
+    const table = document.getElementById("taskTable");
+    if (!table) return;
+
+    table.innerHTML = "";
+
+    if (tasks.length === 0) {
+        table.innerHTML = `
+        <tr>
+            <td colspan="7" style="text-align:center;padding:25px;font-weight:500;color:#777;">
+                No Task Found Matching Selected Filter Criteria 🔍
+            </td>
+        </tr>`;
+        return;
+    }
+
+    tasks.forEach(task => {
+        let cls = "pending";
+        const currentStatus = (task.status || "").toLowerCase();
+
+        if (currentStatus === "completed") cls = "completed";
+        else if (currentStatus === "ongoing") cls = "ongoing";
+        else if (currentStatus === "overdue") cls = "overdue";
+
+        table.innerHTML += `
+        <tr>
+            <td><strong>#${task.id}</strong></td>
+            <td>${task.employee}</td>
+            <td><strong>${task.title}</strong></td>
+            <td>${task.description || "-"}</td>
+            <td>${formatDateTime(task.deadline)}</td>
+            <td>
+                <span class="badge ${cls}">
+                    ${task.status}
+                </span>
+            </td>
+            <td>${formatDateTime(task.created_at)}</td>
+        </tr>`;
+    });
+}
+
+function updateCards(tasks) {
+    const total = document.getElementById("totalTasks");
+    const pending = document.getElementById("pendingTasks");
+    const ongoing = document.getElementById("ongoingTasks");
+    const completed = document.getElementById("completedTasks");
+
+    if (total) total.innerText = tasks.length;
+    if (pending) pending.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "pending").length;
+    if (ongoing) ongoing.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "ongoing").length;
+    if (completed) completed.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "completed").length;
+}
+</script>
+</body>
+</html>

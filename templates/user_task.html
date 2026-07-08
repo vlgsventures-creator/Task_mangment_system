@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tasks | VLGS Workspace</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="/static/manifest.json">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
+      notifyButton: {
+        enable: true // Screen ke kono par Red Bell Icon dikhayega
+      }
+    });
+
+    OneSignal.Notifications.requestPermission();
+  });
+</script>    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+        body { background:#f8fafc; color:#1e293b; padding-bottom: 90px; }
+
+        /* HEADER */
+        .header {
+            background:#fff; padding:16px 24px; display:flex; justify-content:space-between;
+            align-items:center; box-shadow:0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.02); position:sticky; top:0; z-index:999;
+        }
+        .header-left { display:flex; align-items:center; gap:16px; }
+        .back-btn {
+            width:40px; height:40px; border-radius:12px; background:#f1f5f9;
+            display:flex; align-items:center; justify-content:center; cursor:pointer; color:#475569; font-size:16px; transition:.2s;
+        }
+        .back-btn:hover { background:#0d6efd; color:#fff; }
+        .title h2 { font-size:20px; color:#0f172a; font-weight: 600; }
+        .title p { font-size:13px; color:#64748b; font-weight: 500; margin-top: 2px; }
+        
+        .header-right-group { display: flex; align-items: center; gap: 12px; }
+
+        /* FILTER DROPDOWN STYLE */
+        .filter-select {
+            padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+            border: 1px solid #e2e8f0; outline: none; background: #fff; color: #334155;
+            cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;
+        }
+        .filter-select:hover { border-color: #0d6efd; color: #0d6efd; }
+
+        /* CONTAINER & CARDS */
+        .container { max-width:1000px; margin:auto; padding:24px 16px; }
+        
+        .task-list {
+            display: flex; flex-direction: column; gap: 16px; margin-top: 10px;
+        }
+        
+        /* INDIVIDUAL TASK CARD */
+        .task-card {
+            background: #fff; border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01); 
+            border: 1px solid #e2e8f0;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border-color: #cbd5e1; }
+        
+        /* Overdue Task Highlight */
+        .task-card.overdue-highlight {
+            background: #fff5f5;
+            border-left: 5px solid #ef4444;
+            border-color: #fee2e2;
+        }
+
+        /* Rescheduled Task Highlight */
+        .task-card.rescheduled-card {
+            border-left: 5px solid #0d6efd;
+            background: #f0f7ff;
+        }
+
+        .task-info { display: flex; flex-direction: column; gap: 8px; flex: 1; padding-right: 24px; }
+        .task-info h3 { font-size: 16px; color: #0f172a; font-weight: 600; }
+        .task-info p { font-size: 14px; color: #475569; line-height: 1.6; }
+        
+        .task-dates { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #64748b; margin-top: 4px; }
+        .task-dates span strong { color: #334155; }
+
+        /* STATUS CONTROLS */
+        .task-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        
+        .status-select {
+            padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            border: 1px solid transparent; outline: none; cursor: pointer; transition: 0.2s;
+        }
+        .status-select:disabled { cursor: not-allowed; opacity: 0.8; }
+        
+        .status-select.pending { background: #fef3c7; color: #d97706; }
+        .status-select.ongoing { background: #dbeafe; color: #2563eb; }
+        .status-select.completed { background: #dcfce7; color: #16a34a; }
+        .status-select.overdue { background: #fee2e2; color: #dc2626; }
+        
+        .status-select option { background: #fff; color: #0f172a; font-weight: 500; }
+
+        /* RESCHEDULE BUTTON */
+        .btn-reschedule {
+            background: #ef4444; color: #fff; border: none; padding: 8px 14px;
+            border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: 0.2s;
+        }
+        .btn-reschedule:hover { background: #dc2626; }
+
+        /* COMPLETE TASK BUTTON (GREEN TICK) */
+        .btn-complete-tick {
+            background: #10b981; color: #fff; border: none; padding: 8px 14px;
+            border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: 0.2s;
+        }
+        .btn-complete-tick:hover { background: #059669; }
+
+        /* BADGES */
+        .badge-rescheduled {
+            background: #e0f2fe; color: #0369a1; padding: 4px 10px;
+            border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid #bae6fd;
+            display: inline-flex; align-items: center; gap: 4px; width: fit-content;
+        }
+
+        /* MODAL STYLES */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.5); display: none; justify-content: center;
+            align-items: center; z-index: 1000; padding: 16px;
+        }
+        .modal-box {
+            background: #fff; border-radius: 16px; width: 100%; max-width: 450px;
+            padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-header h3 { font-size: 18px; color: #0f172a; }
+        .modal-close { cursor: pointer; font-size: 18px; color: #64748b; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1;
+            font-size: 14px; outline: none; font-family: inherit;
+        }
+        .form-group input:focus, .form-group textarea:focus { border-color: #0d6efd; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-submit { background: #0d6efd; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+        /* BOTTOM NAV */
+        .bottom {
+            position:fixed; bottom:0; left:0; width:100%; background:white;
+            display:flex; justify-content:space-around; padding:12px 0;
+            box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05), 0 -2px 4px -1px rgba(0,0,0,0.03); z-index: 100;
+            border-top: 1px solid #f1f5f9;
+        }
+        .bottom a { text-decoration:none; color:#64748b; font-size:12px; text-align:center; transition: 0.2s; font-weight: 500; }
+        .bottom i { display:block; font-size:20px; margin-bottom:4px; transition: 0.2s; }
+        .bottom a:hover { color: #6c5ce7; }
+        .active { color:#6c5ce7 !important; }
+
+        @media(max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px; }
+            .header-right-group { width: 100%; justify-content: space-between; }
+            .task-card { flex-direction: column; align-items: flex-start; gap: 16px; padding: 18px; }
+            .task-actions { width: 100%; align-items: flex-start; border-top: 1px solid #f1f5f9; padding-top: 14px; }
+            .status-select, .btn-reschedule, .btn-complete-tick { width: 100%; text-align: center; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="back-btn" onclick="window.location.href='/user'">
+                <i class="fa-solid fa-arrow-left"></i>
+            </div>
+            <div class="title">
+                <h2>My Workspace Tasks</h2>
+                <p id="employeeMotivation">Hey User, let's crush some goals today! 🚀</p>
+            </div>
+        </div>
+        
+        <div class="header-right-group">
+            <select id="taskFilter" class="filter-select">
+                <option value="All">📁 All Tasks</option>
+                <option value="Pending">⏳ Pending Work</option>
+                <option value="Ongoing">🚀 Ongoing Work</option>
+                <option value="Completed">✅ Completed History</option>
+                <option value="Overdue">⚠️ Overdue Work</option>
+                <option value="Rescheduled">🔄 Rescheduled Tasks</option>
+            </select>
+            <div class="back-btn" id="refreshBtn"><i class="fa-solid fa-rotate-right"></i></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="task-list" id="tasksContainer"></div>
+    </div>
+
+    <div class="modal-overlay" id="rescheduleModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Reschedule Task Deadline</h3>
+                <i class="fa-solid fa-xmark modal-close" onclick="closeRescheduleModal()"></i>
+            </div>
+            <form id="rescheduleForm">
+                <input type="hidden" id="modalTaskId">
+                <div class="form-group">
+                    <label for="newDeadline">New Proposed Deadline & Time</label>
+                    <input type="datetime-local" id="newDeadline" required>
+                </div>
+                <div class="form-group">
+                    <label for="delayReason">Reason for Rescheduling</label>
+                    <textarea id="delayReason" rows="3" placeholder="Explain why deadline needs to be updated..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeRescheduleModal()">Cancel</button>
+                    <button type="submit" class="btn-submit">Update Deadline</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="bottom">
+        <a href="/user"><i class="fa-solid fa-house"></i>Home</a>
+        <a href="/user_task" class="active"><i class="fa-solid fa-list-check"></i>Tasks</a>
+        <a href="/user_alerts"><i class="fa-solid fa-bell"></i>Alerts</a>
+        <a href="/user_profile"><i class="fa-solid fa-user"></i>Profile</a>
+    </div>
+
+    <script>
+        const loggedInUserId = sessionStorage.getItem("employee_id") || 1; 
+        const loggedInUserName = sessionStorage.getItem("employee_name") || "Team Member";
+
+        let allTasksArray = []; 
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("taskFilter").addEventListener("change", applyTaskFilter);
+            document.getElementById("refreshBtn").addEventListener("click", loadMyTasks);
+            document.getElementById("rescheduleForm").addEventListener("submit", submitRescheduleRequest);
+            loadMyTasks();
+        });
+
+        function formatDateTime(dateString) {
+            if (!dateString || dateString === "N/A") return "-";
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+
+            return `${day}-${month}-${year} | ${hours}:${minutes}`;
+        }
+
+        async function loadMyTasks() {
+            const container = document.getElementById("tasksContainer");
+            container.innerHTML = "<p style='text-align:center; color:#64748b; padding: 20px;'>Loading your tasks...</p>";
+
+            try {
+                const response = await fetch(`/api/tasks/${loggedInUserId}`);
+                let rawTasks = await response.json();
+
+                allTasksArray = rawTasks.sort((a, b) => b.id - a.id);
+
+                generateMotivationLine(allTasksArray);
+                applyTaskFilter();
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = "<p style='text-align:center; color:#ef4444; padding: 20px;'>Failed to sync tasks from server.</p>";
+            }
+        }
+
+        function generateMotivationLine(tasks) {
+            const motivationElement = document.getElementById("employeeMotivation");
+            const activeTasks = tasks.filter(t => t.status === "Pending" || t.status === "Ongoing").length;
+            const overdueTasks = tasks.filter(t => t.status === "Overdue").length;
+
+            if (overdueTasks > 0) {
+                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, you have ${overdueTasks} overdue tasks. Reschedule or finish them now! ⚡`;
+            } else if (activeTasks > 0) {
+                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, ${activeTasks} tasks are waiting for you! ✨`;
+            } else if (tasks.length > 0) {
+                motivationElement.innerHTML = `Awesome job, <strong>${loggedInUserName}</strong>! All tasks caught up! 🎉`;
+            } else {
+                motivationElement.innerHTML = `Welcome, <strong>${loggedInUserName}</strong>! Ready for new challenges? 🚀`;
+            }
+        }
+
+        function applyTaskFilter() {
+            const filterValue = document.getElementById("taskFilter").value;
+            const container = document.getElementById("tasksContainer");
+            container.innerHTML = "";
+
+            let filteredTasks = allTasksArray;
+
+            if (filterValue === "Rescheduled") {
+                filteredTasks = allTasksArray.filter(task => task.is_rescheduled || task.reschedule_requested);
+            } else if (filterValue !== "All") {
+                filteredTasks = allTasksArray.filter(task => task.status === filterValue);
+            }
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = `
+                <div style='text-align:center; padding:50px 20px; background:#fff; border-radius:16px; color:#64748b; border: 1px solid #e2e8f0;'>
+                    <i class="fa-solid fa-folder-open" style="font-size:40px; color:#cbd5e1; margin-bottom:12px;"></i>
+                    <p style="font-weight:500; font-size:15px;">No ${filterValue !== 'All' ? filterValue.toLowerCase() : ''} tasks found.</p>
+                </div>`;
+                return;
+            }
+
+            filteredTasks.forEach(task => {
+                const statusClass = task.status ? task.status.toLowerCase() : 'pending';
+                const isOverdue = task.status === 'Overdue';
+                const isCompleted = task.status === 'Completed';
+                const isRescheduled = task.is_rescheduled || task.reschedule_requested;
+
+                let cardClass = 'task-card';
+                if (isOverdue) cardClass += ' overdue-highlight';
+                else if (isRescheduled) cardClass += ' rescheduled-card';
+
+                const deadlineStyle = isCompleted ? 'color: #64748b;' : (isOverdue ? 'color: #ef4444;' : 'color: #0d6efd;');
+                const isDisabled = isCompleted ? 'disabled' : '';
+
+                // Action Control Buttons Logic
+                let actionControlHtml = '';
+
+                if (isOverdue) {
+                    actionControlHtml = `
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                            <span class="status-select overdue" style="text-align:center;">⚠️ Overdue</span>
+                            <button class="btn-reschedule" onclick="openRescheduleModal(${task.id})">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Reschedule
+                            </button>
+                        </div>
+                    `;
+                } else if (isCompleted) {
+                    actionControlHtml = `
+                        <select class="status-select completed" disabled>
+                            <option value="Completed" selected>✅ Completed</option>
+                        </select>
+                    `;
+                } else {
+                    // Normal or Rescheduled Pending/Ongoing Tasks
+                    actionControlHtml = `
+                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; width:100%;">
+                            <select class="status-select ${statusClass}" onchange="changeStatus(${task.id}, this)" ${isDisabled}>
+                                <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
+                                <option value="Ongoing" ${task.status === 'Ongoing' ? 'selected' : ''}>🚀 Ongoing</option>
+                                <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>✅ Completed</option>
+                            </select>
+                            <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
+                                <i class="fa-solid fa-circle-check"></i> Mark Complete
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Rescheduled Badge Tag
+                const rescheduledBadge = isRescheduled ? `<div class="badge-rescheduled"><i class="fa-solid fa-rotate"></i> Rescheduled</div>` : '';
+
+                container.innerHTML += `
+                <div class="${cardClass}">
+                    <div class="task-info">
+                        ${rescheduledBadge}
+                        <h3>${task.title}</h3>
+                        <p>${task.description || "No description provided."}</p>
+                        <div class="task-dates">
+                            <span><i class="fa-solid fa-calendar-plus" style="color: #94a3b8;"></i> Assigned: <strong>${formatDateTime(task.created_at)}</strong></span>
+                            <span><i class="fa-solid fa-clock" style="color: #94a3b8;"></i> Deadline: <strong style="${deadlineStyle}">${formatDateTime(task.deadline)}</strong></span>
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        ${actionControlHtml}
+                    </div>
+                </div>`;
+            });
+        }
+
+        async function changeStatus(taskId, selectElement) {
+            const newStatus = selectElement.value;
+            if (newStatus === "Completed") {
+                markAsCompletedDirect(taskId);
+                return;
+            }
+            updateStatusAPI(taskId, newStatus);
+        }
+
+        async function markAsCompletedDirect(taskId) {
+            const confirmChange = confirm("Are you sure you want to mark this task as Completed? ✔️");
+            if (confirmChange) {
+                updateStatusAPI(taskId, "Completed");
+            }
+        }
+
+        async function updateStatusAPI(taskId, status) {
+            try {
+                const response = await fetch("/api/update_task_status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: taskId, status: status })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    loadMyTasks(); 
+                } else {
+                    alert("Status update failed!");
+                    loadMyTasks(); 
+                }
+            } catch (error) {
+                console.error("Network Error:", error);
+                alert("Server Connection Error!");
+            }
+        }
+
+        function openRescheduleModal(taskId) {
+            document.getElementById("modalTaskId").value = taskId;
+            document.getElementById("rescheduleModal").style.display = "flex";
+        }
+
+        function closeRescheduleModal() {
+            document.getElementById("rescheduleModal").style.display = "none";
+            document.getElementById("rescheduleForm").reset();
+        }
+
+        async function submitRescheduleRequest(e) {
+            e.preventDefault();
+            const taskId = document.getElementById("modalTaskId").value;
+            const newDeadline = document.getElementById("newDeadline").value;
+            const delayReason = document.getElementById("delayReason").value;
+
+            try {
+                const response = await fetch("/api/request_reschedule", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        task_id: taskId,
+                        employee_id: loggedInUserId,
+                        proposed_deadline: newDeadline,
+                        reason: delayReason
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("Task Rescheduled & Deadline Updated Successfully!");
+                    closeRescheduleModal();
+                    loadMyTasks(); 
+                } else {
+                    alert(result.message || "Failed to update deadline.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Server Error while updating task deadline.");
+            }
+        }
+    </script>
+</body>
+</html>

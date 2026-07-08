@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reschedule Requests | VLGS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+body{
+    background:#f5f7fb;
+    color:#222;
+}
+.header{
+    background:#fff;
+    padding:18px 25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 5px 20px rgba(0,0,0,.06);
+    position:sticky;
+    top:0;
+    z-index:999;
+}
+.left{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+.back{
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    background:#edf3ff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:#0d6efd;
+    font-size:18px;
+    transition:.3s;
+}
+.back:hover{
+    background:#0d6efd;
+    color:#fff;
+}
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:25px;
+}
+.card{
+    background:#fff;
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 8px 25px rgba(0,0,0,.06);
+    margin-bottom:25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.card-icon{
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    background: #fff3cd;
+    color: #856404;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.table-box{
+    background:#fff;
+    border-radius:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.06);
+    overflow-x:auto;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1000px;
+}
+thead{
+    background:#856404;
+    color:white;
+}
+th, td{
+    padding:16px 14px;
+    text-align:left;
+    font-size:14px;
+    border-bottom:1px solid #eee;
+}
+
+/* Badges */
+.badge{
+    padding:5px 12px;
+    border-radius:30px;
+    font-size:12px;
+    font-weight:600;
+    display:inline-block;
+}
+.status-pending{ background:#fff4d6; color:#c68a00; }
+.status-approved{ background:#dff7e5; color:#11863d; }
+.status-rejected{ background:#ffe0e0; color:#d40000; }
+</style>
+</head>
+<body>
+
+<header class="header">
+    <div class="left">
+        <div class="back" onclick="window.location.href='/task-records'">
+            <i class="fa-solid fa-arrow-left"></i>
+        </div>
+        <div>
+            <h2>Reschedule Requests</h2>
+            <p>View and manage employee deadline change requests</p>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <div class="card-icon">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+        </div>
+        <div>
+            <h5 style="color:#777; font-weight:500;">Total Reschedule Requests</h5>
+            <h2 id="totalRescheduledCount" style="font-size:32px; color:#856404;">0</h2>
+        </div>
+    </div>
+
+    <div class="table-box">
+        <table>
+            <thead>
+                <tr>
+                    <th>Req ID</th>
+                    <th>Task ID</th>
+                    <th>Employee</th>
+                    <th>Task Title</th>
+                    <th>Old Deadline</th>
+                    <th>Proposed Deadline</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="rescheduledTable">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+window.addEventListener("DOMContentLoaded", loadRescheduledTasks);
+
+function formatDateTime(dateString) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; 
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${day}-${month}-${year} | ${hours}:${minutes}`;
+}
+async function loadRescheduledTasks() {
+    try {
+        const res = await fetch("/api/rescheduled_tasks");
+        const requests = await res.json();
+
+        const table = document.getElementById("rescheduledTable");
+        
+        if (!Array.isArray(requests)) {
+            console.error("Backend Error:", requests.error);
+            table.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red; padding:25px;">
+                Error loading data: ${requests.error || 'Unknown Error'}
+            </td></tr>`;
+            return;
+        }
+
+        document.getElementById("totalRescheduledCount").innerText = requests.length;
+        table.innerHTML = "";
+
+        if (requests.length === 0) {
+            table.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:25px;">No reschedule requests found!</td></tr>`;
+            return;
+        }
+
+        requests.forEach(r => {
+            let statusClass = "status-pending";
+            const status = (r.status || "").toLowerCase();
+            if (status === "approved") statusClass = "status-approved";
+            if (status === "rejected") statusClass = "status-rejected";
+
+            table.innerHTML += `
+                <tr>
+                    <td><strong>#REQ-${r.request_id}</strong></td>
+                    <td><strong>#${r.task_id}</strong></td>
+                    <td>${r.employee_name || r.employee || 'N/A'}</td>
+                    <td><strong>${r.task_title || r.title || 'N/A'}</strong></td>
+                    <td style="color:#d40000;">${formatDateTime(r.old_deadline)}</td>
+                    <td style="color:#11863d; font-weight:600;">${formatDateTime(r.proposed_deadline || r.new_deadline)}</td>
+                    <td>${r.reason || 'No reason provided'}</td>
+                    <td><span class="badge ${statusClass}">${r.status}</span></td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        console.error("Fetch Error:", err);
+    }
+}
+</script>
+</body>
+</html>

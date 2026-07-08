@@ -1,0 +1,15 @@
+{
+  "name": "VLGS Workspace",
+  "short_name": "VLGS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6c5ce7",
+  "icons": [
+    {
+      "src": "/static/vlgs_logo.png", 
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

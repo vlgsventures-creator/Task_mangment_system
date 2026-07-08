@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Notifications | VLGS Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    
+    <link rel="manifest" href="/static/manifest.json">
+   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
+      notifyButton: {
+        enable: true // Screen ke kono par Red Bell Icon dikhayega
+      }
+    });
+
+    OneSignal.Notifications.requestPermission();
+  });
+</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #f4f7fb; color: #222; min-height: 100vh; }
+        .top-header { position: sticky; top: 0; z-index: 100; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid #ececec; box-shadow: 0 3px 10px rgba(0, 0, 0, .05); }
+        .top-header .left { display: flex; align-items: center; gap: 15px; }
+        .top-header h2 { font-size: 24px; font-weight: 700; }
+        .top-header p { font-size: 13px; color: #888; margin-top: 2px; }
+        .back-btn, .icon-btn { width: 45px; height: 45px; border: none; border-radius: 12px; background: #f2f4f8; cursor: pointer; transition: .3s; font-size: 17px; display: flex; align-items: center; justify-content: center; }
+        .back-btn:hover, .icon-btn:hover { background: #2563eb; color: #fff; transform: translateY(-2px); }
+        .search-box { width: 92%; margin: 22px auto; background: #fff; display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0, 0, 0, .06); }
+        .search-box i { color: #888; font-size: 18px; }
+        .search-box input { width: 100%; border: none; outline: none; font-size: 15px; background: transparent; }
+        .filter-row { width: 92%; margin: auto; display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+        .filter-row::-webkit-scrollbar { display: none; }
+        .filter { border: none; background: #fff; padding: 11px 22px; border-radius: 25px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: .3s; box-shadow: 0 2px 10px rgba(0, 0, 0, .05); color: #555; }
+        .filter:hover, .filter.active { background: #2563eb; color: #fff; }
+        .stats { width: 92%; margin: 25px auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+        .stat-card { background: #fff; border-radius: 18px; padding: 22px; text-align: center; box-shadow: 0 5px 18px rgba(0, 0, 0, .06); }
+        .stat-card h4 { color: #777; font-size: 14px; margin-bottom: 10px; }
+        .stat-card h2 { font-size: 30px; color: #2563eb; }
+        .actions { width: 92%; margin: auto; display: flex; justify-content: flex-end; margin-bottom: 22px; }
+        .actions button { border: none; background: #2563eb; color: #fff; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: .3s; }
+        .actions button:hover { background: #1e4fc4; transform: translateY(-2px); }
+        .notification-container { width: 92%; margin: auto; padding-bottom: 35px; }
+        .notification-card { display: flex; align-items: flex-start; gap: 16px; background: #fff; border-radius: 18px; padding: 18px; margin-bottom: 18px; box-shadow: 0 6px 18px rgba(0, 0, 0, .06); transition: .3s; position: relative; animation: fadeIn .35s ease; }
+        .notification-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0, 0, 0, .10); }
+        .notification-card.unread { border-left: 5px solid #2563eb; background: #f8fbff; }
+        .icon { width: 58px; height: 58px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-size: 22px; flex-shrink: 0; }
+        .icon.blue { background: #2563eb; }
+        .icon.green { background: #16a34a; }
+        .icon.orange { background: #ea580c; }
+        .icon.red { background: #dc2626; }
+        .icon.purple { background: #7c3aed; }
+        .content { flex: 1; }
+        .content .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .content h3 { font-size: 17px; font-weight: 600; }
+        .content .top span { font-size: 12px; color: #999; }
+        .content p { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 14px; }
+        .bottom-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .badge.assigned { background: #dbeafe; color: #2563eb; }
+        .badge.completed { background: #dcfce7; color: #16a34a; }
+        .badge.overdue { background: #fee2e2; color: #dc2626; }
+        .badge.logs { background: #f3e8ff; color: #7c3aed; }
+        .empty, .loading { text-align: center; padding: 80px 20px; color: #999; }
+        .empty i, .loading i { font-size: 55px; margin-bottom: 20px; color: #d1d5db; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @media(max-width:768px){ .top-header h2 { font-size: 20px; } .stats { grid-template-columns: 1fr; } .notification-card { flex-direction: column; } .content .top { flex-direction: column; align-items: flex-start; gap: 6px; } .bottom-row { width: 100%; } }
+    </style>
+</head>
+
+<body>
+
+    <header class="top-header">
+        <div class="left">
+            <button class="back-btn" onclick="window.location.href='/admin'">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div>
+                <h2>Notifications</h2>
+                <p>Admin Activity Center</p>
+            </div>
+        </div>
+        <div class="right">
+            <button id="refreshBtn" class="icon-btn" onclick="loadNotifications()">
+                <i class="fa-solid fa-arrow-rotate-right"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search alerts or employee actions..." oninput="filterNotifications()">
+    </div>
+
+    <div class="filter-row">
+        <button class="filter active" onclick="setFilter('all', this)">All Notifications</button>
+        <button class="filter" onclick="setFilter('Assigned', this)">Assigned</button>
+        <button class="filter" onclick="setFilter('Completed', this)">Completed</button>
+        <button class="filter" onclick="setFilter('Overdue', this)">Overdue</button>
+        <button class="filter" onclick="setFilter('Logs', this)">Employee Sessions</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h4>Unread Notifications</h4>
+            <h2 id="unreadCount">0</h2>
+        </div>
+        <div class="stat-card">
+            <h4>Total Activity Captured</h4>
+            <h2 id="totalCount" style="color: #16a34a;">0</h2>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button onclick="markAllAsRead()">Mark All as Read</button>
+    </div>
+
+    <div class="notification-container" id="notifContainer">
+        <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading records...</p></div>
+    </div>
+
+    <script>
+        let allNotifs = [];
+        let currentFilter = 'all';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadNotifications();
+            setInterval(loadNotifications, 30000); // Auto refresh every 30s
+        });
+
+        function loadNotifications() {
+            fetch('/api/admin_notifications')
+                .then(res => res.json())
+                .then(data => {
+                    allNotifs = data;
+                    updateStats();
+                    renderNotifications();
+                })
+                .catch(err => {
+                    console.error("Error loading alerts:", err);
+                    document.getElementById("notifContainer").innerHTML = '<div class="empty"><p>Failed to parse notifications</p></div>';
+                });
+        }
+
+        function updateStats() {
+            const unread = allNotifs.filter(n => !n.is_read).length;
+            document.getElementById("unreadCount").innerText = unread;
+            document.getElementById("totalCount").innerText = allNotifs.length;
+        }
+
+        function setFilter(filterType, element) {
+            document.querySelectorAll('.filter').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            currentFilter = filterType;
+            renderNotifications();
+        }
+
+        function filterNotifications() {
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById("notifContainer");
+            const searchVal = document.getElementById("searchInput").value.toLowerCase();
+            
+            let filtered = allNotifs;
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(n => n.type === currentFilter);
+            }
+            if (searchVal) {
+                filtered = filtered.filter(n => n.title.toLowerCase().includes(searchVal) || n.message.toLowerCase().includes(searchVal));
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty"><i class="fa-regular fa-bell-slash"></i><h2>No notifications found</h2></div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(n => {
+                let iconClass = 'blue', iconShape = 'fa-list-check';
+                if (n.type === 'Completed') { iconClass = 'green'; iconShape = 'fa-circle-check'; }
+                if (n.type === 'Overdue') { iconClass = 'red'; iconShape = 'fa-triangle-exclamation'; }
+                if (n.type === 'Logs') { iconClass = 'purple'; iconShape = 'fa-user-clock'; }
+
+                return `
+                    <div class="notification-card ${n.is_read ? '' : 'unread'}">
+                        <div class="icon ${iconClass}">
+                            <i class="fa-solid ${iconShape}"></i>
+                        </div>
+                        <div class="content">
+                            <div class="top">
+                                <h3>${n.title}</h3>
+                                <span>${n.created_at}</span>
+                            </div>
+                            <p>${n.message}</p>
+                            <div class="bottom-row">
+                                <span class="badge ${n.type.toLowerCase()}">${n.type}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function markAllAsRead() {
+            fetch('/api/read_all_notifications', { method: 'PUT' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadNotifications();
+                    }
+                });
+        }
+        // Admin Panel par Pending Requests Load karne ka function
+async function loadRescheduleRequests() {
+    const response = await fetch('/api/admin/reschedule_requests');
+    const requests = await response.json();
+    
+    let container = document.getElementById("rescheduleRequestsContainer");
+    container.innerHTML = "";
+
+    if(requests.length === 0) {
+        container.innerHTML = "<p>No pending reschedule requests.</p>";
+        return;
+    }
+
+    requests.forEach(req => {
+        container.innerHTML += `
+            <div class="request-card" style="border: 1px solid #cbd5e1; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                <h4>Task: ${req.task_title}</h4>
+                <p><strong>Employee:</strong> ${req.employee_name}</p>
+                <p><strong>Old Deadline:</strong> ${req.old_deadline}</p>
+                <p><strong>Proposed Deadline:</strong> <span style="color:#0d6efd; font-weight:600;">${req.proposed_deadline}</span></p>
+                <p><strong>Reason:</strong> ${req.reason}</p>
+                <div style="margin-top: 10px; display:flex; gap: 10px;">
+                    <button onclick="handleRescheduleAction(${req.request_id}, 'approve')" style="background:#16a34a; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Approve</button>
+                    <button onclick="handleRescheduleAction(${req.request_id}, 'reject')" style="background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Reject</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// Action Button Handler (Approve / Reject)
+async function handleRescheduleAction(requestId, action) {
+    if(!confirm(`Are you sure you want to ${action} this request?`)) return;
+
+    const response = await fetch('/api/admin/action_reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: requestId, action: action })
+    });
+
+    const result = await response.json();
+    if(result.success) {
+        alert(result.message);
+        loadRescheduleRequests(); // Refresh list
+    } else {
+        alert("Error handling request.");
+    }
+}
+    </script>
+</body>
+</html>

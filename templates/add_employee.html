@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Add Employee</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background:#f4f6fb;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+padding: 20px 0;
+}
+
+.card{
+width:95%;
+max-width:420px;
+background:white;
+padding:30px;
+border-radius:20px;
+box-shadow:0 15px 40px rgba(0,0,0,.08);
+}
+
+h2{
+margin-bottom:25px;
+text-align:center;
+font-size:28px;
+font-weight:600;
+color:#3d3d3d;
+}
+
+.inputBox{
+margin-bottom:18px;
+}
+
+.inputBox label{
+display:block;
+font-size:14px;
+margin-bottom:8px;
+font-weight:500;
+color:#555;
+}
+
+.inputBox input, .inputBox select{
+width:100%;
+padding:14px;
+border:1px solid #ddd;
+border-radius:12px;
+font-size:15px;
+outline:none;
+transition:.3s;
+background: white;
+}
+
+.inputBox input:focus, .inputBox select:focus{
+border-color:#6C63FF;
+box-shadow:0 0 0 4px rgba(108,99,255,.15);
+}
+
+button{
+width:100%;
+padding:15px;
+border:none;
+border-radius:12px;
+background:#6C63FF;
+color:white;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+transition:.3s;
+}
+
+button:hover{
+background:#564ee8;
+}
+
+#msg{
+margin-top:15px;
+text-align:center;
+font-size:14px;
+font-weight:500;
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="card">
+
+<h2>Add Employee</h2>
+
+<div class="inputBox">
+<label>Full Name</label>
+<input type="text" id="name">
+</div>
+
+<div class="inputBox">
+<label>Email</label>
+<input type="email" id="email">
+</div>
+
+<div class="inputBox">
+<label>Password</label>
+<input type="password" id="password">
+</div>
+
+<div class="inputBox">
+<label>Team</label>
+<input type="text" id="team" placeholder="e.g. Development, HR, Sales">
+</div>
+
+<div class="inputBox">
+<label>Date of Birth</label>
+<input type="date" id="dob">
+</div>
+
+<div class="inputBox">
+<label>Joining Date</label>
+<input type="date" id="joining_date">
+</div>
+
+<button onclick="addEmployee()">
+Add Employee
+</button>
+
+<div id="msg"></div>
+
+</div>
+
+<script>
+
+function addEmployee(){
+
+let name = document.getElementById("name").value.trim();
+let email = document.getElementById("email").value.trim();
+let password = document.getElementById("password").value.trim();
+let team = document.getElementById("team").value.trim();
+let dob = document.getElementById("dob").value;
+let joiningDate = document.getElementById("joining_date").value;
+let msg = document.getElementById("msg");
+
+// Validation Check
+if(name=="" || email=="" || password=="" || team=="" || dob=="" || joiningDate==""){
+    msg.innerHTML = "Please fill all fields";
+    msg.style.color = "red";
+    return;
+}
+
+fetch("http://127.0.0.1:5000/add_employee", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        name: name,
+        email: email,
+        password: password,
+        team: team,
+        dob: dob,
+        joining_date: joiningDate
+    })
+})
+.then(res => res.json())
+.then(data => {
+    msg.innerHTML = data.message;
+    msg.style.color = "green";
+
+    // Clear input fields
+    document.getElementById("name").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("team").value = "";
+    document.getElementById("dob").value = "";
+    document.getElementById("joining_date").value = "";
+})
+.catch(() => {
+    msg.innerHTML = "Server Error";
+    msg.style.color = "red";
+});
+
+}
+
+</script>
+
+</body>
+</html>

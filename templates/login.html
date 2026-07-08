@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Hub Login</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+ 
+    <link rel="manifest" href="/static/manifest.json">
+   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
+      notifyButton: {
+        enable: true // Screen ke kono par Red Bell Icon dikhayega
+      }
+    });
+
+    OneSignal.Notifications.requestPermission();
+  });
+</script>
+<style>
+:root {
+    --bg: #F9F6F0;
+    --card: rgba(255, 255, 255, 0.85);
+    --primary: #9E8976;
+    --primary-hover: #847160;
+    --text: #4A443F;
+    --text-light: #9C938C;
+    --border: #EADBCE;
+    --input: #FAF8F5;
+    --shadow: 0 20px 40px rgba(158, 137, 118, 0.1);
+    --shadow-hover: 0 25px 50px rgba(158, 137, 118, 0.18);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: 
+        radial-gradient(circle at 10% 10%, #F3ECE3 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, #EFE6DC 0%, transparent 40%),
+        linear-gradient(135deg, #FDFBF7, #F6F1E9, #FAF6F0);
+    overflow: hidden;
+    padding: 20px;
+    position: relative;
+}
+
+body::before,
+body::after {
+    content: "";
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: rgba(158, 137, 118, 0.05);
+    filter: blur(80px);
+    z-index: 1;
+}
+
+body::before {
+    top: -150px;
+    left: -100px;
+}
+
+body::after {
+    bottom: -150px;
+    right: -100px;
+}
+
+.container {
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    z-index: 5;
+}
+
+.login-card {
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(234, 223, 206, 0.6);
+    border-radius: 24px;
+    padding: 40px 32px;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
+}
+
+.login-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.brand-header {
+    text-align: center;
+    margin-bottom: 36px;
+}
+
+.logo-wrapper {
+    width: 80px;
+    height: 80px;
+    background: #784103;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(158, 137, 118, 0.08);
+}
+
+.logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.brand-header h1 {
+    color: var(--text);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+}
+
+.brand-header p {
+    color: var(--text-light);
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 22px;
+}
+
+.input-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    font-size: 16px;
+    transition: color 0.25s ease;
+}
+
+.input-group input {
+    width: 100%;
+    height: 54px;
+    padding: 0 48px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.25s ease;
+}
+
+.input-group input::placeholder {
+    color: #B5A89E;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 4px rgba(158, 137, 118, 0.08);
+}
+
+.input-group input:focus ~ .input-icon {
+    color: var(--primary);
+}
+
+#togglePassword {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 15px;
+    transition: color 0.25s ease;
+}
+
+#togglePassword:hover {
+    color: var(--primary);
+}
+
+.submit-btn {
+    width: 100%;
+    height: 54px;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 8px 20px rgba(158, 137, 118, 0.15);
+}
+
+.submit-btn:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 12px 25px rgba(132, 113, 96, 0.25);
+}
+
+.submit-btn:active {
+    transform: scale(0.99);
+}
+
+.footer-text {
+    text-align: center;
+    margin-top: 32px;
+    color: var(--text-light);
+    font-size: 12px;
+    letter-spacing: 0.2px;
+}
+
+@media (max-width: 430px) {
+    .login-card {
+        padding: 32px 24px;
+        border-radius: 20px;
+    }
+    .logo-wrapper {
+        width: 74px;
+        height: 74px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+    <div class="container">
+        <form class="login-card" id="loginForm">
+            
+            <div class="brand-header">
+                <div class="logo-wrapper">
+                   <img src="{{ url_for('static', filename='vlgs_logo.png') }}">
+                </div>
+                <p>VLGS Workspace</p>
+            </div>
+
+            <div class="input-group">
+                <i class="fa fa-user input-icon"></i>
+                <input type="text" id="username" placeholder="Username" required autocomplete="username">
+            </div>
+
+            <div class="input-group">
+                <i class="fa fa-lock input-icon"></i>
+                <input type="password" placeholder="Password" id="password" required autocomplete="current-password">
+                <span id="togglePassword">
+                    <i class="fa fa-eye" id="toggleIcon"></i>
+                </span>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submit">
+                Log In <i class="fa-solid fa-arrow-right" style="margin-left: 8px; font-size: 14px;"></i>
+            </button>
+
+            <div class="footer-text">
+                &copy; 2026 Task Management System powered by <br>VLGS Ventures LLP
+            </div>
+
+        </form>
+    </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const loginForm = document.getElementById("loginForm");
+    const passwordInput = document.getElementById("password");
+    const togglePassword = document.getElementById("togglePassword");
+    const toggleIcon = document.getElementById("toggleIcon");
+
+    if (!loginForm) {
+        console.error("loginForm not found");
+        return;
+    }
+
+    // आँख वाले बटन से पासवर्ड शो/हाइड करने का लॉजिक
+    if (togglePassword && passwordInput && toggleIcon) {
+        togglePassword.addEventListener("click", function() {
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleIcon.classList.remove("fa-eye");
+                toggleIcon.classList.add("fa-eye-slash");
+            } else {
+                passwordInput.type = "password";
+                toggleIcon.classList.remove("fa-eye-slash");
+                toggleIcon.classList.add("fa-eye");
+            }
+        });
+    }
+
+    loginForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        try {
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Server Error");
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                // यहाँ हम सत्र और कर्मचारी की सभी जानकारियों को स्टोर कर रहे हैं
+                sessionStorage.setItem("employee_id", data.id);
+                sessionStorage.setItem("employee_name", data.name);
+                sessionStorage.setItem("role", data.role);
+                
+                if (data.role === "employee" && data.session_id) {
+                    sessionStorage.setItem("session_id", data.session_id);
+                }
+
+                if (data.role === "admin") {
+                    window.location.href = "/admin";
+                } else {
+                    window.location.href = "/user";
+                }
+            } else {
+                alert(data.message || "Invalid Credentials");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Server Error");
+        }
+    });
+});
+</script>
+</body>
+</html>

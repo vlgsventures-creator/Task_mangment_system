@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLGS Alerts</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+<link rel="manifest" href="/static/manifest.json">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+    });
+  });
+</script>
+<style>
+*{ margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+body{ background:linear-gradient(180deg,#ece8ff,#f7f6ff,#ffffff); padding-bottom:90px; }
+
+.header{ padding:20px; display:flex; justify-content:between; align-items:center; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+.header h2{ font-size:22px; color:#4b3ac7; font-weight:700; }
+
+.container { padding: 20px; }
+.alert-card {
+    background: white; padding: 15px; border-radius: 15px; margin-bottom: 12px;
+    display: flex; gap: 15px; align-items: start; box-shadow: 0 5px 15px rgba(0,0,0,0.04);
+    border-left: 5px solid #6c5ce7; transition: 0.3s;
+}
+.alert-card.unread { border-left-color: #ff4d4f; background: #fffcfc; }
+.alert-card i { font-size: 20px; color: #6c5ce7; margin-top: 3px; }
+.alert-card.unread i { color: #ff4d4f; }
+.alert-info h4 { font-size: 14px; color: #333; margin-bottom: 4px; }
+.alert-info p { font-size: 13px; color: #666; }
+.alert-info small { color: #aaa; font-size: 11px; display: block; margin-top: 5px; }
+
+/* TOAST POPUP FOR PHONE/SCREEN ALERTS */
+.toast-container {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; width: 90%; max-width: 400px;
+}
+.toast {
+    background: #ff4d4f; color: white; padding: 15px; border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(255,77,79,0.4); margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    animation: slideDown 0.5s ease;
+}
+@keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* BOTTOM NAV */
+.bottom{ position:fixed; bottom:0; left:0; width:100%; background:white; display:flex; justify-content:space-around; padding:15px 0; box-shadow:0 -5px 20px rgba(0,0,0,.1); z-index: 100; }
+.bottom a{ text-decoration:none; color:#888; font-size:12px; text-align:center; }
+.bottom i{ display:block; font-size:22px; margin-bottom:5px; }
+.active{ color:#6c5ce7; }
+</style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="header">
+    <h2>Notifications & Alerts 🔔</h2>
+</div>
+
+<div class="container" id="notificationList">
+    <p style="text-align:center; color:#888;">Loading notifications...</p>
+</div>
+
+<div class="bottom">
+    <a href="/user"><i class="fa-solid fa-house"></i>Home</a>
+    <a href="/user_task"><i class="fa-solid fa-list-check"></i>Tasks</a>
+    <a href="/user_alerts" class="active"><i class="fa-solid fa-bell"></i>Alerts</a>
+    <a href="/user_profile"><i class="fa-solid fa-user"></i>Profile</a>
+</div>
+
+<script>
+const employeeId = sessionStorage.getItem("employee_id");
+if (!employeeId) { window.location.href = "/"; }
+
+// Load Notifications on Page Load
+fetchNotifications();
+
+// 10-10 मिनट में ओवरड्यू टास्क चेक करने के लिए इंटरवल (10 मिनट = 600000 ms)
+// टेस्टिंग के लिए आप इसे 10000 (10 सेकंड) कर के देख सकते हैं
+setInterval(checkOverdueAlerts, 600000); 
+checkOverdueAlerts(); // पहली बार तुरंत चेक करने के लिए
+
+function fetchNotifications() {
+    fetch(`/api/get_notifications/${employeeId}`)
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById("notificationList");
+        container.innerHTML = "";
+        
+        if(data.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:#888; margin-top:20px;">No notifications yet.</p>`;
+            return;
+        }
+
+        data.forEach(notif => {
+            const isUnread = notif.status === 'unread' ? 'unread' : '';
+            const icon = notif.type === 'overdue' ? 'fa-triangle-exclamation' : 'fa-list-check';
+            
+            container.innerHTML += `
+                <div class="alert-card ${isUnread}">
+                    <i class="fa-solid ${icon}"></i>
+                    <div class="alert-info">
+                        <h4>${notif.title}</h4>
+                        <p>${notif.message}</p>
+                        <small>${notif.created_at}</small>
+                    </div>
+                </div>
+            `;
+        });
+    });
+}
+
+function checkOverdueAlerts() {
+    fetch(`/api/check_overdue_alerts/${employeeId}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.has_overdue) {
+            showToastAlert(data.message);
+            // अगर यूजर इसी पेज पर है, तो लिस्ट रीलोड कर दो
+            fetchNotifications();
+        }
+    });
+}
+
+function showToastAlert(message) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `
+        <span><i class="fa-solid fa-bell"></i> ${message}</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="this.parentElement.remove()"></i>
+    `;
+    container.appendChild(toast);
+    
+    // ऑडियो टोन प्ले करने के लिए (ऑप्शनल)
+    try {
+        let context = new AudioContext();
+        let osc = context.createOscillator();
+        osc.type = "sine";
+        osc.connect(context.destination);
+        osc.start();
+        osc.stop(context.currentTime + 0.2);
+    } catch(e) {}
+
+    // 6 सेकंड बाद ऑटोमैटिक गायब हो जाए
+    setTimeout(() => { toast.remove(); }, 6000);
+}
+</script>
+</body>
+</html>

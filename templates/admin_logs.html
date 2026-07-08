@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Logs | VLGS Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+     <link rel="manifest" href="/static/manifest.json">
+     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
+      notifyButton: {
+        enable: true // Screen ke kono par Red Bell Icon dikhayega
+      }
+    });
+
+    OneSignal.Notifications.requestPermission();
+  });
+</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background-color: #f4f6f9;
+            padding: 20px;
+            padding-bottom: 90px; /* Space for bottom nav */
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            border: 1px solid #edf2f7;
+        }
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 15px;
+        }
+        h2 {
+            color: #1e293b;
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* FILTER BAR STYLING */
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .filter-input {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+            outline: none;
+            background: white;
+            color: #334155;
+            cursor: pointer;
+        }
+        .filter-input:focus {
+            border-color: #4A90E2;
+        }
+        .reset-btn {
+            align-self: flex-end;
+            padding: 10px 20px;
+            background: #64748b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            height: 42px;
+        }
+        .reset-btn:hover { background: #475569; }
+
+        /* TABLE STYLING */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f8fafc;
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .status-completed {
+            background-color: #f1f5f9;
+            color: #64748b;
+        }
+
+        /* Bottom Navigation Styling */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background-color: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000;
+        }
+        .nav-btn {
+            background: none; border: none; cursor: pointer; display: flex;
+            flex-direction: column; align-items: center; color: #94a3b8; font-size: 12px; gap: 4px; transition: color 0.2s;
+        }
+        .nav-btn i { font-size: 20px; }
+        .nav-btn.active, .nav-btn:hover { color: #4A90E2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <h2><i class="fa-solid fa-clock-rotate-left" style="color: #4A90E2;"></i> Session Attendance Logs</h2>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Filter by Employee</label>
+            <select id="employeeFilter" class="filter-input">
+                <option value="All">👥 All Employees</option>
+                </select>
+        </div>
+        <div class="filter-group">
+            <label>Filter by Date</label>
+            <input type="date" id="dateFilter" class="filter-input">
+        </div>
+        <button class="reset-btn" id="resetFilters"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+    </div>
+    
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee Name</th>
+                    <th>Login Time (HMS)</th>
+                    <th>Logout Time (HMS)</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="logs-table-body">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #64748b;">Loading session histories...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <button class="nav-btn" onclick="window.location.href='/add_employee'">
+        <i class="fa-solid fa-user-plus"></i><span>Add Employee</span>
+    </button>
+    <button class="nav-btn active" onclick="window.location.href='/admin_logs'">
+        <i class="fa-solid fa-user"></i><span>Emp Logs</span>
+    </button>
+    <button class="nav-btn" onclick="window.location.href='/add-task'">
+        <i class="fa-solid fa-plus"></i><span>Assign Task</span>
+    </button>
+    <button class="nav-btn" onclick="window.location.href='/task-records'">
+        <i class="fa-solid fa-list-check"></i><span>Task Records</span>
+    </button>
+</div>
+
+<script>
+    // ग्लोबल एरे फिल्टरिंग के लिए
+    let allLogsArray = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetchSessionLogs();
+        
+        // फिल्टर चेंज होने पर इवेंट ट्रिगर करें
+        document.getElementById("employeeFilter").addEventListener("change", applyFilters);
+        document.getElementById("dateFilter").addEventListener("change", applyFilters);
+        document.getElementById("resetFilters").addEventListener("click", () => {
+            document.getElementById("employeeFilter").value = "All";
+            document.getElementById("dateFilter").value = "";
+            applyFilters();
+        });
+    });
+
+    // 1. Easy Date & Time Format (DD-MM-YYYY | HH:MM:SS)
+    function formatEasyDateTime(dateString) {
+        if (!dateString || dateString === "Active Session" || dateString === "—") return "—";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        return `${day}-${month}-${year} | ${hours}:${minutes}:${seconds}`;
+    }
+
+    // 2. Fetch Session Logs from API
+    function fetchSessionLogs() {
+        fetch('/api/session_logs')
+            .then(response => response.json())
+            .then(data => {
+                if(data.error) {
+                    document.getElementById("logs-table-body").innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">Error: ${data.error}</td></tr>`;
+                    return;
+                }
+                
+                allLogsArray = data;
+
+                // एम्प्लोयी फ़िल्टर ड्रॉपडाउन में नाम भरना (Unique Names)
+                populateEmployeeDropdown(data);
+
+                // टेबल रेंडर करना
+                applyFilters();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById("logs-table-body").innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">Failed to pull system api logs.</td></tr>`;
+            });
+    }
+
+    // 3. Dropdown Populate Logic
+    function populateEmployeeDropdown(logs) {
+        const empSelect = document.getElementById("employeeFilter");
+        const uniqueEmployees = [...new Set(logs.map(log => log.employee_name))];
+        
+        uniqueEmployees.forEach(empName => {
+            const opt = document.createElement("option");
+            opt.value = empName;
+            opt.innerText = empName;
+            empSelect.appendChild(opt);
+        });
+    }
+
+    // 4. Multi-Filter Engine (Date + Employee)
+    function applyFilters() {
+        const selectedEmp = document.getElementById("employeeFilter").value;
+        const selectedDate = document.getElementById("dateFilter").value; // Format: YYYY-MM-DD
+        const tbody = document.getElementById("logs-table-body");
+        
+        tbody.innerHTML = "";
+
+        let filteredLogs = allLogsArray;
+
+        // एम्प्लोयी नाम से फ़िल्टर करें
+        if (selectedEmp !== "All") {
+            filteredLogs = filteredLogs.filter(log => log.employee_name === selectedEmp);
+        }
+
+        // तारीख से फ़िल्टर करें
+        if (selectedDate) {
+            // selectedDate 'YYYY-MM-DD' फॉर्मेट में होती है
+            // हम चेक करेंगे कि क्या log.login_time में वो तारीख शामिल है
+            filteredLogs = filteredLogs.filter(log => {
+                const logDateStr = new Date(log.login_time).toISOString().split('T')[0];
+                return logDateStr === selectedDate;
+            });
+        }
+
+        if(filteredLogs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #64748b; padding: 30px;">No logs found for the selected filter combination.</td></tr>`;
+            return;
+        }
+
+        // फिल्टर किया हुआ डेटा रेंडर करें
+        filteredLogs.forEach(log => {
+            const row = document.createElement("tr");
+            const isActive = log.logout_time === "Active Session" || !log.logout_time || log.logout_time === "—";
+            const badgeClass = isActive ? "status-badge status-active" : "status-badge status-completed";
+            const statusText = isActive ? "Online" : "Disconnected";
+
+            row.innerHTML = `
+                <td><strong>${log.employee_name}</strong></td>
+                <td>${formatEasyDateTime(log.login_time)}</td>
+                <td>${isActive ? '—' : formatEasyDateTime(log.logout_time)}</td>
+                <td><code>${log.ip_address || '0.0.0.0'}</code></td>
+                <td><span class="${badgeClass}">${statusText}</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+</script>
+
+</body>
+</html>

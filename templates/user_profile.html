@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Hub | VLGS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    
+    <link rel="manifest" href="/static/manifest.json">
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+    });
+  });
+</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body { 
+            margin: 0;
+            min-height: 100vh;
+            padding-bottom: 40px; 
+            
+            /* --- SOFT PREMIUM MOVING GRADIENT --- */
+            background: linear-gradient(-45deg, #f8fafc, #eef4ff, #e0e7ff, #c7d2fe);
+            background-size: 400% 400%;
+            animation: softFluidGradient 15s ease infinite;
+            overflow-x: hidden;
+        }
+
+        @keyframes softFluidGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .profile-container { max-width: 1100px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 320px 1fr; gap: 25px; }
+        
+        /* LEFT CARD: User Main Info */
+        .profile-sidebar { 
+            background: rgba(255, 255, 255, 0.75); 
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 24px; 
+            padding: 35px 20px; 
+            text-align: center; 
+            box-shadow: 0 10px 30px rgba(108,92,231,.06); 
+        }
+        
+        /* Avatar Box ohne level badge */
+        .avatar-box { position: relative; width: 125px; height: 125px; margin: 0 auto 20px; cursor: pointer; }
+        .avatar-box img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid #6c5ce7; transition: 0.3s; }
+        .avatar-box:hover img { opacity: 0.8; }
+        .upload-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: 0.3s; }
+        .avatar-box:hover .upload-overlay { opacity: 1; }
+        
+        .user-info h3 { font-size: 22px; font-weight: 700; color: #4b3ac7; margin-bottom: 4px; }
+        .user-info p { font-size: 14px; color: #64748b; font-weight: 500; margin-bottom: 5px; }
+        
+        .info-list { margin-top: 25px; text-align: left; border-top: 1px solid rgba(108,92,231,.15); padding-top: 20px; }
+        .info-item { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 13.5px; color: #475569; }
+        .info-item i { color: #6c5ce7; font-size: 16px; width: 20px; }
+
+        /* RIGHT CARD: Stats & Analytics */
+        .main-content { display: flex; flex-direction: column; gap: 25px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        
+        .stat-card { 
+            background: rgba(255, 255, 255, 0.65); 
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px; 
+            padding: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,.04); 
+            transition: 0.3s ease;
+        }
+        .stat-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.85); }
+        
+        .stat-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .stat-icon.blue { background: #e0f2fe; color: #0369a1; }
+        .stat-icon.green { background: #dcfce7; color: #15803d; }
+        .stat-icon.purple { background: #f3e8ff; color: #6b21a8; }
+        .stat-data h2 { font-size: 24px; font-weight: 700; color: #2d2d2d; }
+        .stat-data p { font-size: 12px; color: #777; }
+
+        /* NEW INTERESTING HUB SECTION DESIGN */
+        .section-box { 
+            background: rgba(255, 255, 255, 0.65); 
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px; 
+            padding: 30px; 
+            box-shadow: 0 15px 30px rgba(108,92,231,.1); 
+        }
+        .section-box h4 { font-size: 17px; color: #4b3ac7; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+        /* Visual Dynamic Efficiency Hub elements */
+        .widget-flex { display: flex; align-items: center; justify-content: space-around; gap: 30px; flex-wrap: wrap; }
+        
+        /* Modern Circular Badge Widget */
+        .efficiency-wheel {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(#6c5ce7 0%, #e2e8f0 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 8px 20px rgba(108,92,231,0.15);
+            transition: all 0.5s ease;
+        }
+        .efficiency-wheel::before {
+            content: "";
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: #fff;
+        }
+        .wheel-content { position: relative; z-index: 2; text-align: center; }
+        .wheel-content h2 { font-size: 26px; font-weight: 700; color: #1a202c; }
+        .wheel-content p { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+
+        /* Dynamic Visual Status Bars */
+        .metrics-tracker-box { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 18px; }
+        .bar-group { display: flex; flex-direction: column; gap: 6px; }
+        .bar-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #475569; }
+        .bar-bg { width: 100%; height: 10px; background: #e2e8f0; border-radius: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 10px; width: 0%; transition: width 1s cubic-bezier(0.1, 0.8, 0.25, 1); }
+        
+        .fill-completed { background: #169c4f; }
+        .fill-pending { background: #355cff; }
+
+        @media(max-width: 850px) {
+            .profile-container { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .widget-flex { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="profile-container">
+    
+    <aside class="profile-sidebar">
+        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+        
+        <div class="avatar-box" onclick="document.getElementById('avatarInput').click()">
+            <img id="profile-img" src="" alt="Employee Photo">
+            <div class="upload-overlay"><i class="fa-solid fa-camera"></i></div>
+        </div>
+        
+        <div class="user-info">
+            <h3 id="profile-name">Loading...</h3>
+            <p id="profile-role-display">---</p>
+        </div>
+        
+        <div class="info-list">
+            <div class="info-item"><i class="fa-solid fa-id-card"></i> <span id="profile-emp-id">---</span></div>
+            <div class="info-item"><i class="fa-solid fa-envelope"></i> <span id="profile-email">---</span></div>
+            <div class="info-item"><i class="fa-solid fa-cake-candles"></i> <span id="profile-dob-display">DOB: Loading...</span></div>
+            <div class="info-item"><i class="fa-solid fa-calendar-check"></i> <span id="profile-joining-display">Joined: Loading...</span></div>
+        </div>
+    </aside>
+    
+    <main class="main-content">
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fa-solid fa-star"></i></div>
+                <div class="stat-data"><h2 id="efficiency">--%</h2><p>Task Efficiency</p></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-data"><h2 id="doneTasks">--</h2><p>Tasks Completed</p></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="fa-solid fa-clock"></i></div>
+                <div class="stat-data"><h2 id="onTime">--</h2><p>Delayed Tasks</p></div>
+            </div>
+        </div>
+        
+        <div class="section-box">
+            <h4><i class="fa-solid fa-shield-halved" style="color: #6c5ce7;"></i> Live Operational Status</h4>
+            <div class="widget-flex">
+                
+                <div class="efficiency-wheel" id="efficiencyWheel">
+                    <div class="wheel-content">
+                        <h2 id="wheelPercentage">0%</h2>
+                        <p>Score</p>
+                    </div>
+                </div>
+                
+                <div class="metrics-tracker-box">
+                    <div class="bar-group">
+                        <div class="bar-label">
+                            <span>Completed Tasks Status</span>
+                            <span id="labelCompleted">0</span>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill fill-completed" id="barCompleted"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bar-group">
+                        <div class="bar-label">
+                            <span>Process Response Rate</span>
+                            <span id="labelResponse">0%</span>
+                        </div>
+                        <div class="bar-bg">
+                            <div class="bar-fill fill-pending" id="barResponse"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const employeeId = sessionStorage.getItem("employee_id"); 
+    
+    if (!employeeId) {
+        alert("Session Expired! Please login again.");
+        window.location.href = "/";
+        return;
+    }
+
+    // --- 1. FETCH & MAP PROFILE DATA ---
+    function loadProfile() {
+        fetch(`/api/employee_profile/${employeeId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const u = data.profile;
+                    document.getElementById("profile-name").innerText = u.name;
+                    document.getElementById("profile-emp-id").innerText = u.emp_code;
+                    document.getElementById("profile-email").innerText = u.email;
+                    document.getElementById("profile-img").src = u.profile_pic || 'https://via.placeholder.com/150';
+                    
+                    document.getElementById("profile-role-display").innerText = u.team || "General Process Team";
+                    document.getElementById("profile-dob-display").innerText = u.dob ? "DOB: " + u.dob : "DOB: Not Set";
+                    document.getElementById("profile-joining-display").innerText = u.joining_date ? "Joined: " + u.joining_date : "Joined: Not Set";
+                    
+                    // Main Stats Setup
+                    const finalEfficiency = u.stats.efficiency || "0%";
+                    document.getElementById("efficiency").innerText = finalEfficiency;
+                    document.getElementById("doneTasks").innerText = u.stats.completed || "0";
+                    document.getElementById("onTime").innerText = u.stats.delayed || "0";
+                    
+                    // Render custom interactive progress wheel elements instead of charts
+                    renderCustomInteractiveWidgets(u.stats, finalEfficiency);
+                }
+            }).catch(err => console.error("Error fetching workspace details:", err));
+    }
+    loadProfile();
+
+    // --- 2. INTERACTIVE WIDGETS PROCESSING ENGINE ---
+    function renderCustomInteractiveWidgets(stats, efficiencyString) {
+        const numEfficiency = parseInt(efficiencyString) || 0;
+        const totalCompleted = parseInt(stats.completed) || 0;
+        const totalDelayed = parseInt(stats.delayed) || 0;
+        const totalCalculatedSum = totalCompleted + totalDelayed || 10; 
+
+        // 1. Update the Conic Gradient Wheel Background safely
+        const wheelElement = document.getElementById("efficiencyWheel");
+        document.getElementById("wheelPercentage").innerText = numEfficiency + "%";
+        wheelElement.style.background = `conic-gradient(#6c5ce7 ${numEfficiency}%, #e2e8f0 ${numEfficiency}%)`;
+
+        // 2. Animate and update Completed Task Bar
+        document.getElementById("labelCompleted").innerText = totalCompleted + " Tasks done";
+        const completedPercentageRatio = Math.min(Math.round((totalCompleted / totalCalculatedSum) * 100), 100) || 0;
+        setTimeout(() => {
+            document.getElementById("barCompleted").style.width = completedPercentageRatio + "%";
+        }, 200);
+
+        // 3. Process Response Rate mapping dynamically
+        const calculatedResponseRate = Math.max(100 - (totalDelayed * 10), 40);
+        document.getElementById("labelResponse").innerText = calculatedResponseRate + "% Smooth";
+        setTimeout(() => {
+            document.getElementById("barResponse").style.width = calculatedResponseRate + "%";
+        }, 400);
+    }
+
+    // --- 3. BASE64 PHOTO UPLOAD HANDLING ---
+    document.getElementById("avatarInput").addEventListener("change", function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            const base64Image = reader.result;
+
+            fetch(`/api/upload_avatar/${employeeId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: base64Image })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("profile-img").src = base64Image;
+                    alert("Profile Picture updated successfully!");
+                } else {
+                    alert("Photo upload failed!");
+                }
+            }).catch(err => alert("Network error during photo upload."));
+        };
+        reader.readAsDataURL(file);
+    });
+});
+</script>
+</body>
+</html>

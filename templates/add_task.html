@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Add Task | VLGS</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+<link rel="manifest" href="/static/manifest.json">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
+      notifyButton: {
+        enable: true // Screen ke kono par Red Bell Icon dikhayega
+      }
+    });
+
+    OneSignal.Notifications.requestPermission();
+  });
+</script><style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Poppins,sans-serif;
+}
+
+body{
+
+background:#f6f7fb;
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:20px;
+
+}
+
+.card{
+
+width:100%;
+max-width:520px;
+background:#fff;
+border-radius:20px;
+padding:30px;
+box-shadow:0 15px 35px rgba(0,0,0,.08);
+
+}
+
+.header{
+
+text-align:center;
+margin-bottom:25px;
+
+}
+
+.logo{
+
+width:70px;
+height:70px;
+border-radius:18px;
+background:#111827;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:28px;
+margin:auto;
+margin-bottom:15px;
+
+}
+
+.header h2{
+
+font-size:26px;
+color:#111;
+
+}
+
+.header p{
+
+font-size:14px;
+color:#777;
+margin-top:6px;
+
+}
+
+.form-group{
+
+margin-bottom:18px;
+
+}
+
+label{
+
+display:block;
+font-size:14px;
+font-weight:600;
+margin-bottom:8px;
+color:#333;
+
+}
+
+.input-box{
+
+position:relative;
+
+}
+
+.input-box i{
+
+position:absolute;
+left:15px;
+top:50%;
+transform:translateY(-50%);
+color:#999;
+
+}
+
+input,
+textarea,
+select{
+
+width:100%;
+padding:14px 15px 14px 45px;
+border:1px solid #ddd;
+border-radius:12px;
+font-size:15px;
+outline:none;
+transition:.3s;
+background:white;
+
+}
+
+textarea{
+
+padding-top:15px;
+resize:none;
+height:120px;
+
+}
+
+textarea+i{
+
+top:22px;
+
+}
+
+input:focus,
+textarea:focus,
+select:focus{
+
+border-color:#111827;
+box-shadow:0 0 0 4px rgba(17,24,39,.08);
+
+}
+
+button{
+
+width:100%;
+padding:15px;
+border:none;
+border-radius:12px;
+background:#111827;
+color:white;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+transition:.3s;
+
+}
+
+button:hover{
+
+background:#000;
+
+}
+
+.success{
+
+display:none;
+padding:12px;
+margin-bottom:18px;
+background:#d1fae5;
+color:#065f46;
+border-radius:10px;
+text-align:center;
+font-weight:600;
+
+}
+
+@media(max-width:600px){
+
+.card{
+
+padding:22px;
+
+}
+
+.header h2{
+
+font-size:22px;
+
+}
+
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="card">
+
+<div class="header">
+
+<div class="logo">
+<i class="fas fa-list-check"></i>
+</div>
+
+<h2>Create New Task</h2>
+
+<p>Assign work to your employees</p>
+
+</div>
+
+<div class="success" id="successBox">
+Task Created Successfully 🎉
+</div>
+
+<form id="taskForm">
+
+<div class="form-group">
+
+<label>Task Title</label>
+
+<div class="input-box">
+
+<i class="fas fa-clipboard"></i>
+
+<input
+type="text"
+id="title"
+placeholder="Enter task title"
+required>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>Description</label>
+
+<div class="input-box">
+
+<i class="fas fa-align-left"></i>
+
+<textarea
+id="description"
+placeholder="Write task description..."
+required></textarea>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>Assign Employee</label>
+
+<div class="input-box">
+
+<i class="fas fa-user"></i>
+
+<select id="employee" required>
+
+<option value="">
+Loading Employees...
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>Deadline</label>
+
+<div class="input-box">
+
+<i class="fas fa-calendar"></i>
+
+<input
+type="datetime-local"
+id="deadline"
+required>
+
+</div>
+
+</div>
+
+<button type="submit">
+
+<i class="fas fa-plus-circle"></i>
+
+ Add Task
+
+</button>
+
+</form>
+
+</div>
+
+<script>
+
+const employeeDropdown=document.getElementById("employee");
+
+fetch("http://127.0.0.1:5000/api/employees")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+employeeDropdown.innerHTML="<option value=''>Select Employee</option>";
+
+data.forEach(emp=>{
+
+employeeDropdown.innerHTML+=`
+
+<option value="${emp.id}">
+
+${emp.name}
+
+</option>
+
+`;
+
+});
+
+})
+
+.catch(()=>{
+
+employeeDropdown.innerHTML="<option>Error Loading</option>";
+
+});
+
+document.getElementById("taskForm").addEventListener("submit",async function(e){
+
+e.preventDefault();
+
+const body={
+
+title:document.getElementById("title").value,
+
+description:document.getElementById("description").value,
+
+assigned_to:document.getElementById("employee").value,
+
+deadline:document.getElementById("deadline").value
+
+};
+
+const res=await fetch("http://127.0.0.1:5000/api/add_task",{
+
+method:"POST",
+
+headers:{
+
+"Content-Type":"application/json"
+
+},
+
+body:JSON.stringify(body)
+
+});
+
+const data=await res.json();
+
+if(data.success){
+
+document.getElementById("successBox").style.display="block";
+
+document.getElementById("taskForm").reset();
+
+setTimeout(()=>{
+
+document.getElementById("successBox").style.display="none";
+
+},3000);
+
+}else{
+
+alert(data.message);
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
