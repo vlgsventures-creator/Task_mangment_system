@@ -190,10 +190,9 @@ def user_task_page():
 def user_alert_page():
     return render_template("user_alert.html")
 
-@app.route("/rescheduled_tasks")
-def user_resudle_page():
-    return render_template("rescheduled_task.html")
-
+@app.route('/rescheduled_tasks_page')
+def rescheduled_tasks_page():
+    return render_template('rescheduled_tasks.html')
 # -------------------------------------------------------------
 # 🛠️ DYNAMIC SERVICE WORKER ENGINE (Foolproof Notification Delivery)
 # -------------------------------------------------------------
