@@ -5,19 +5,31 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime
 import requests
 import json
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-# PostgreSQL Connection Helper
-def get_db_connection():
-    return psycopg2.connect(
-        host="127.0.0.1",
-        database="vlgsWorkspace_DB",
-        user="postgres",
-        password="vlgs24"
-    )
+# Render se DATABASE_URL environment variable padhega
+DB_URL = os.environ.get("DATABASE_URL")
 
+# Render ka URL 'postgres://' se start hota hai, psycopg2 ko 'postgresql://' chahiye
+if DB_URL and DB_URL.startswith("postgres://"):
+    DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+
+# PostgreSQL Connection Helper (UPDATED FIX)
+def get_db_connection():
+    if DB_URL:
+        # Render Cloud Database Se Connect Hoga
+        return psycopg2.connect(DB_URL)
+    else:
+        # Local PC Par Chalane Ke Liye Fallback
+        return psycopg2.connect(
+            host="127.0.0.1",
+            database="vlgsWorkspace_DB",
+            user="postgres",
+            password="vlgs24"
+        )
 # -------------------------
 # Pages (HTML Templates)
 # -------------------------
