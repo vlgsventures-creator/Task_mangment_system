@@ -345,8 +345,8 @@ def add_employee():
         dob = data.get('dob') if data.get('dob') else None
         joining_date = data.get('joining_date') if data.get('joining_date') else None
 
-        if not name or not email:
-            return jsonify({"status": "error", "message": "Name and Email are required"}), 400
+        if not name :
+            return jsonify({"status": "error", "message": "Name is required"}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
