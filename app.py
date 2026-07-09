@@ -17,19 +17,18 @@ DB_URL = os.environ.get("DATABASE_URL")
 if DB_URL and DB_URL.startswith("postgres://"):
     DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
 
-# PostgreSQL Connection Helper (UPDATED FIX)
+# PostgreSQL Connection Helper
 def get_db_connection():
     if DB_URL:
-        # Render Cloud Database Se Connect Hoga
         return psycopg2.connect(DB_URL)
     else:
-        # Local PC Par Chalane Ke Liye Fallback
         return psycopg2.connect(
             host="127.0.0.1",
             database="vlgsWorkspace_DB",
             user="postgres",
             password="vlgs24"
         )
+
 # -------------------------
 # Pages (HTML Templates)
 # -------------------------
@@ -76,7 +75,7 @@ def user_task_page():
  
 @app.route("/user_alerts")
 def user_alert_page():
-    return render_template("user_alert.html") 
+    return render_template("user_alert.html")
 
 @app.route('/OneSignalSDKWorker.js')
 def onesignal_worker():
@@ -90,26 +89,40 @@ def rescheduled_tasks_page():
 def get_rescheduled_tasks_alias():
     return get_admin_reschedule_requests()
 
-
 #------------------------------------------
 # Database Tables Create Karne Ka Function
+#------------------------------------------
 def init_db():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # 1. Employees Table
+        # 1. Admins Table (Login ke liye)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admins (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 2. Employees Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS employees (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE NOT NULL,
-                role VARCHAR(50) DEFAULT 'Employee',
+                password VARCHAR(100),
+                team VARCHAR(50),
+                dob DATE,
+                joining_date DATE,
+                profile_pic TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
-        # 2. Tasks Table
+        # 3. Tasks Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
@@ -118,11 +131,12 @@ def init_db():
                 assigned_to INT REFERENCES employees(id) ON DELETE CASCADE,
                 deadline TIMESTAMP,
                 status VARCHAR(50) DEFAULT 'Pending',
+                completed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
-        # 3. Reschedule Requests Table
+        # 4. Reschedule Requests Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS reschedule_requests (
                 id SERIAL PRIMARY KEY,
@@ -135,16 +149,48 @@ def init_db():
             );
         """)
 
+        # 5. Notifications Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                employee_id INT,
+                title VARCHAR(200),
+                message TEXT,
+                type VARCHAR(50),
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # 6. Employee Sessions Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS employee_sessions (
+                id SERIAL PRIMARY KEY,
+                employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
+                login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                logout_time TIMESTAMP,
+                ip_address VARCHAR(50)
+            );
+        """)
+
+        # Default Admin User Insert (Agar Na Ho)
+        cur.execute("""
+            INSERT INTO admins (username, password)
+            VALUES ('admin', 'admin123')
+            ON CONFLICT (username) DO NOTHING;
+        """)
+
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Database tables created successfully!")
+        print("✅ Remote Database Tables & Admin initialized successfully!")
     except Exception as e:
         print("❌ DB Init Error:", e)
 
 # App start hote hi tables create honge
 with app.app_context():
     init_db()
+
 # --------------------------------------------
 # Notification & Push Helper Function
 # --------------------------------------------
@@ -402,7 +448,6 @@ def add_task():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# UPDATED USER TASK FETCH (With Pending Reschedule Check)
 @app.route("/api/tasks/<int:employee_id>", methods=["GET"])
 def employee_tasks(employee_id):
     try:
@@ -443,13 +488,7 @@ def employee_tasks(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#-----------------
 
-import os
-db_url = os.getenv("DATABASE_URL")
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-#---------------
 @app.route("/api/update_task_status", methods=["POST"])
 def update_task_status_post():
     try:
@@ -699,8 +738,6 @@ def update_overdue_tasks():
 # RESCHEDULE REQUESTS (User & Admin Handlers)
 # -------------------------------------------------------------
 
-# 1. User Reschedule Request Bhejega (Status = 'Pending')
-# 1. Main Rescheduled Tasks API (Sabhi Requests Fetch Karega: Pending, Approved, Rejected)
 @app.route('/api/rescheduled_tasks', methods=['GET'])
 def get_rescheduled_tasks():
     try:
@@ -727,17 +764,16 @@ def get_rescheduled_tasks():
         cur.close()
         conn.close()
 
-        # Frontend JS ke sath keys match kar di gayi hain
         requests = [
             {
                 "request_id": row[0],
                 "task_id": row[1],
-                "employee_name": row[2],  # Fix: 'employee' -> 'employee_name'
-                "employee": row[2],       # Safe backup
-                "task_title": row[3],     # Fix: 'title' -> 'task_title'
-                "title": row[3],          # Safe backup
+                "employee_name": row[2],
+                "employee": row[2],
+                "task_title": row[3],
+                "title": row[3],
                 "old_deadline": str(row[4]) if row[4] else None,
-                "proposed_deadline": str(row[5]) if row[5] else None, # Fix: 'new_deadline' -> 'proposed_deadline'
+                "proposed_deadline": str(row[5]) if row[5] else None,
                 "new_deadline": str(row[5]) if row[5] else None,
                 "reason": row[6],
                 "status": row[7],
@@ -749,7 +785,7 @@ def get_rescheduled_tasks():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-# 2. Admin Pending Requests Fetch karega
+
 @app.route("/api/admin/reschedule_requests", methods=["GET"])
 def get_admin_reschedule_requests():
     try:
@@ -787,13 +823,12 @@ def get_admin_reschedule_requests():
         return jsonify({"error": str(e)}), 500
 
 
-# 3. Admin Approve ya Reject karega
 @app.route("/api/admin/action_reschedule", methods=["POST"])
 def action_reschedule():
     try:
         data = request.get_json()
         request_id = data.get("request_id")
-        action = data.get("action") # 'approve' or 'reject'
+        action = data.get("action")
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -846,7 +881,7 @@ def action_reschedule():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-    
+
 # -------------------------
 # Dynamic Employee Profile APIs
 # -------------------------
@@ -944,7 +979,7 @@ def get_employee_profile(employee_id):
         return jsonify({"success": False, "error": str(e)}), 500
     
 
- # -------------------------
+# -------------------------
 # Auto-Cleanup Tasks (Older than 2 Weeks)
 # -------------------------
 @app.route("/api/admin/cleanup_old_tasks", methods=["DELETE"])
@@ -953,14 +988,13 @@ def cleanup_old_tasks():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # 2 hafte (14 days) se purane completed tasks delete karega
         cur.execute("""
             DELETE FROM tasks 
             WHERE status = 'Completed' 
             AND (completed_at < NOW() - INTERVAL '14 days' OR deadline < NOW() - INTERVAL '14 days')
         """)
         
-        deleted_count = cur.rowcount  # Kitne rows delete hue
+        deleted_count = cur.rowcount
         conn.commit()
         cur.close()
         conn.close()
