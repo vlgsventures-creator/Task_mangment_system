@@ -68,8 +68,7 @@ def init_db():
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS dob DATE;")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS joining_date DATE;")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_pic TEXT;")
-        # reschedule_requests table me old_deadline column auto-add karega
-        cur.execute("ALTER TABLE reschedule_requests ADD COLUMN IF NOT EXISTS old_deadline TIMESTAMP;")
+
         # 3. Tasks Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -92,12 +91,15 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
                 employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
+                old_deadline TIMESTAMP,
                 proposed_deadline TIMESTAMP,
                 reason TEXT,
                 status VARCHAR(50) DEFAULT 'Approved',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        # reschedule_requests table me old_deadline column auto-add karega
+        cur.execute("ALTER TABLE reschedule_requests ADD COLUMN IF NOT EXISTS old_deadline TIMESTAMP;")
 
         # 5. Notifications Table
         cur.execute("""
@@ -544,38 +546,9 @@ def employee_tasks(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/update_task_status", methods=["POST"])
-def update_task_status_post():
-    try:
-        data = request.get_json() or {}
-        task_id = data.get("id") or data.get("task_id")
-        status = data.get("status")
-        
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT assigned_to, title FROM tasks WHERE id=%s", (task_id,))
-        task_info = cur.fetchone()
-
-        if status == "Completed":
-            cur.execute("UPDATE tasks SET status=%s, completed_at=CURRENT_TIMESTAMP WHERE id=%s", (status, task_id))
-        else:
-            cur.execute("UPDATE tasks SET status=%s WHERE id=%s", (status, task_id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        if task_info:
-            create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
-
-        return jsonify({"success": True, "message": "Status updated successfully"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
 # -------------------------------------------------------------
-# Reschedule Handlers (Direct Self Reschedule - No Approval)
+# Direct Self-Reschedule & Complete APIs (Unified, No Duplicates)
 # -------------------------------------------------------------
-# 1. Direct Self-Reschedule API (No Failed Updates)
 @app.route("/api/request_reschedule", methods=["POST"])
 def request_reschedule():
     try:
@@ -593,13 +566,13 @@ def request_reschedule():
         task_row = cur.fetchone()
         old_deadline = task_row[0] if task_row else None
 
-        # 1. Reschedule Log Entry
+        # 1. Reschedule History Log
         cur.execute("""
             INSERT INTO reschedule_requests (task_id, employee_id, old_deadline, proposed_deadline, reason, status)
             VALUES (%s, %s, %s, %s, %s, 'Approved')
         """, (task_id, employee_id, old_deadline, proposed_deadline, reason))
 
-        # 2. Update Main Task: New Deadline + Status Back to Pending
+        # 2. Update Main Task: New Deadline, set is_rescheduled, and set Status back to Pending
         cur.execute("""
             UPDATE tasks 
             SET deadline = %s, status = 'Pending', is_rescheduled = TRUE 
@@ -614,8 +587,6 @@ def request_reschedule():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# 2. Robust Status Update API (Fixes Mark Complete Failure)
 @app.route("/api/update_task_status", methods=["POST"])
 def update_task_status_post():
     try:
@@ -628,6 +599,8 @@ def update_task_status_post():
 
         conn = get_db_connection()
         cur = conn.cursor()
+        cur.execute("SELECT assigned_to, title FROM tasks WHERE id=%s", (task_id,))
+        task_info = cur.fetchone()
 
         if status == "Completed":
             cur.execute("UPDATE tasks SET status = 'Completed', completed_at = CURRENT_TIMESTAMP WHERE id = %s", (task_id,))
@@ -638,12 +611,13 @@ def update_task_status_post():
         cur.close()
         conn.close()
 
-        return jsonify({"success": True, "message": "Status updated!"})
+        if task_info:
+            create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
+
+        return jsonify({"success": True, "message": "Status updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# 3. Rescheduled Tasks View API (Shows Old, Proposed & Live Status)
 @app.route("/api/rescheduled_tasks", methods=["GET"])
 def get_rescheduled_tasks():
     try:
@@ -680,7 +654,7 @@ def get_rescheduled_tasks():
         } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 # -------------------------------------------------------------
 # Notifications & Dashboard Stats
 # -------------------------------------------------------------
