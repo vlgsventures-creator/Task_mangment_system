@@ -53,7 +53,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS employees (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
-                email VARCHAR(100) UNIQUE NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
                 password VARCHAR(100),
                 team VARCHAR(50),
                 dob DATE,
@@ -340,22 +340,23 @@ def add_employee():
     try:
         data = request.get_json() or {}
         name = data.get('name')
+        email = data.get('email')
         password = data.get('password', '123456')
         team = data.get('team', 'General')
         dob = data.get('dob') if data.get('dob') else None
         joining_date = data.get('joining_date') if data.get('joining_date') else None
 
-        if not name :
-            return jsonify({"status": "error", "message": "Name is required"}), 400
+        if not name or not email:
+            return jsonify({"status": "error", "message": "Name and Email are required"}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
         
         cur.execute("""
-            INSERT INTO employees(name, password, team, dob, joining_date)
+            INSERT INTO employees(name, email, password, team, dob, joining_date)
             VALUES(%s, %s, %s, %s, %s, %s)
             RETURNING id;
-        """, (name, password, team, dob, joining_date))
+        """, (name, email, password, team, dob, joining_date))
         
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -371,7 +372,7 @@ def get_employees():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, name, team, dob, joining_date FROM employees ORDER BY name ASC")
+        cur.execute("SELECT id, name, email, team, dob, joining_date FROM employees ORDER BY name ASC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -379,6 +380,7 @@ def get_employees():
         return jsonify([{
             "id": row[0], 
             "name": row[1],
+            "email": row[2],
             "team": row[3],
             "dob": str(row[4]) if row[4] else None,
             "joining_date": str(row[5]) if row[5] else None
