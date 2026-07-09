@@ -83,7 +83,9 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        # CRITICAL AUTO-REPAIR: Ensures tasks table matches production columns
         cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_rescheduled BOOLEAN DEFAULT FALSE;")
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;")
 
         # 4. Reschedule Requests / History Table
         cur.execute("""
@@ -91,14 +93,13 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
                 employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
-                old_deadline TIMESTAMP,
                 proposed_deadline TIMESTAMP,
                 reason TEXT,
                 status VARCHAR(50) DEFAULT 'Approved',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
-        # reschedule_requests table me old_deadline column auto-add karega
+        # CRITICAL AUTO-REPAIR: Ensures reschedule_requests has old_deadline column
         cur.execute("ALTER TABLE reschedule_requests ADD COLUMN IF NOT EXISTS old_deadline TIMESTAMP;")
 
         # 5. Notifications Table
@@ -135,7 +136,7 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ DB Schema Initialized Successfully!")
+        print("✅ DB Schema Initialized & Auto-Healed Successfully!")
     except Exception as e:
         print("❌ DB Init Error:", e)
 

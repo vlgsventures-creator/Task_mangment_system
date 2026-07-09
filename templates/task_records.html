@@ -603,11 +603,18 @@ function renderTable(tasks) {
         else if (currentStatus === "ongoing") cls = "ongoing";
         else if (currentStatus === "overdue") cls = "overdue";
 
+        // Display premium highlight badge next to Task Title if rescheduled
+        const rescheduledBadge = task.is_rescheduled ? `
+            <span class="badge" style="background: #edf5ff; color: #0d6efd; border: 1px solid #bae6fd; font-size: 11px; margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-weight: 600;">
+                <i class="fa-solid fa-rotate"></i> Rescheduled
+            </span>
+        ` : '';
+
         table.innerHTML += `
         <tr>
             <td><strong>#${task.id}</strong></td>
             <td>${task.employee}</td>
-            <td><strong>${task.title}</strong></td>
+            <td><strong>${task.title}</strong>${rescheduledBadge}</td>
             <td>${task.description || "-"}</td>
             <td>${formatDateTime(task.deadline)}</td>
             <td>
@@ -625,11 +632,13 @@ function updateCards(tasks) {
     const pending = document.getElementById("pendingTasks");
     const ongoing = document.getElementById("ongoingTasks");
     const completed = document.getElementById("completedTasks");
+    const rescheduled = document.getElementById("rescheduledTasks");
 
     if (total) total.innerText = tasks.length;
     if (pending) pending.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "pending").length;
     if (ongoing) ongoing.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "ongoing").length;
     if (completed) completed.innerText = tasks.filter(t => (t.status || "").toLowerCase() === "completed").length;
+    if (rescheduled) rescheduled.innerText = tasks.filter(t => t.is_rescheduled).length;
 }
 </script>
 </body>
