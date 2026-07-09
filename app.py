@@ -210,6 +210,7 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
     except Exception as e:
         print(f"Notification DB Insert Error: {e}")
 
+    # --- ONESIGNAL PUSH NOTIFICATION ---
     ONESIGNAL_APP_ID = "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a"
     ONESIGNAL_API_KEY = "os_v2_app_x4phyq3l2jfs5cr7q7din52ifl5cweowzpsenjngvur6jpti65i4lkn4zori7bt3fzia7xzncbkrffjf5k65jb54xtepkvl6r4n432a"
 
@@ -220,17 +221,17 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
 
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "included_segments": ["All Users"],
+        "included_segments": ["Subscribed Users", "All Users"],  # Active subscribers ko target karega
         "contents": {"en": message},
         "headings": {"en": title},
-        "url": "/user_task"
+        "url": "https://vlgs-workspace.onrender.com/user_task"  # Complete HTTPS URL
     }
 
     try:
-        requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+        res = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+        print("OneSignal Response:", res.status_code, res.text)  # Debug logs for Render console
     except Exception as err:
         print("OneSignal Error:", err)
-
 # -------------------------------------------------------------
 # Authentication APIs
 # -------------------------------------------------------------
@@ -326,7 +327,7 @@ def get_session_logs():
         return jsonify({"error": str(e)}), 500
 
 # -------------------------------------------------------------
-# Employee Operations (ADD / FETCH)
+# Employee Operations (ADD / FETCH / PROFILE)
 # -------------------------------------------------------------
 @app.route('/add_employee', methods=['POST'])
 @app.route('/api/add_employee', methods=['POST'])
@@ -383,9 +384,110 @@ def get_employees():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/upload_avatar/<int:employee_id>", methods=["POST"])
+def upload_avatar(employee_id):
+    try:
+        data = request.get_json() or {}
+        image_data = data.get("image")
+
+        if not image_data:
+            return jsonify({"success": False, "message": "No image data provided"}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE employees SET profile_pic = %s WHERE id = %s", (image_data, employee_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Profile picture updated successfully"})
+    except Exception as e:
+        print("❌ Upload Avatar Error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/employee_profile/<int:employee_id>", methods=["GET"])
+def get_employee_profile(employee_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, email, team, dob, profile_pic, joining_date FROM employees WHERE id = %s", (employee_id,))
+        emp_data = cur.fetchone()
+
+        if not emp_data:
+            cur.close()
+            conn.close()
+            return jsonify({"success": False, "message": "Employee not found"}), 404
+
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status = 'Completed'", (employee_id,))
+        completed_tasks = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status IN ('Overdue', 'Delayed')", (employee_id,))
+        delayed_tasks = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s", (employee_id,))
+        total_tasks = cur.fetchone()[0]
+
+        efficiency = 100 if total_tasks == 0 else round((completed_tasks / total_tasks) * 100)
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "profile": {
+                "emp_code": f"EMP-2026{emp_data[0]:02d}",
+                "name": emp_data[1],
+                "email": emp_data[2],
+                "team": emp_data[3] if emp_data[3] else "Assign Team",
+                "dob": str(emp_data[4]) if emp_data[4] else "",
+                "profile_pic": emp_data[5] if emp_data[5] else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256",
+                "joining_date": str(emp_data[6]) if emp_data[6] else "",
+                "stats": {
+                    "efficiency": f"{efficiency}%",
+                    "completed": completed_tasks,
+                    "delayed": delayed_tasks
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # -------------------------------------------------------------
 # Tasks Management APIs
 # -------------------------------------------------------------
+@app.route("/api/task_records", methods=["GET"])
+def get_all_task_records():
+    try:
+        update_overdue_tasks()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                t.id, 
+                COALESCE(e.name, 'Unassigned') AS employee_name, 
+                t.title, 
+                t.description, 
+                t.deadline, 
+                t.status, 
+                t.created_at
+            FROM tasks t
+            LEFT JOIN employees e ON t.assigned_to = e.id
+            ORDER BY t.id DESC
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return jsonify([{
+            "id": row[0],
+            "employee": row[1],
+            "title": row[2],
+            "description": row[3],
+            "deadline": str(row[4]) if row[4] else "",
+            "status": row[5],
+            "created_at": str(row[6]) if row[6] else ""
+        } for row in rows])
+    except Exception as e:
+        print("❌ Task Records API Error:", str(e))
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/add_task", methods=["POST"])
 def add_task():
     try:
@@ -592,39 +694,30 @@ def update_overdue_tasks():
 # -------------------------------------------------------------
 # Reschedule Requests Handlers
 # -------------------------------------------------------------
-@app.route('/api/rescheduled_tasks', methods=['GET'])
-def get_rescheduled_tasks():
+@app.route("/api/request_reschedule", methods=["POST"])
+def request_reschedule():
     try:
+        data = request.get_json() or {}
+        task_id = data.get("task_id")
+        employee_id = data.get("employee_id")
+        proposed_deadline = data.get("proposed_deadline")
+        reason = data.get("reason")
+
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT 
-                r.id AS request_id, t.id AS task_id, e.name AS employee_name,
-                t.title AS task_title, t.deadline AS old_deadline,
-                r.proposed_deadline AS new_deadline, r.reason, r.status, r.created_at
-            FROM reschedule_requests r
-            JOIN tasks t ON r.task_id = t.id
-            JOIN employees e ON r.employee_id = e.id
-            ORDER BY r.created_at DESC
-        """)
-        rows = cur.fetchall()
+            INSERT INTO reschedule_requests (task_id, employee_id, proposed_deadline, reason, status)
+            VALUES (%s, %s, %s, %s, 'Pending')
+        """, (task_id, employee_id, proposed_deadline, reason))
+        
+        conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify([{
-            "request_id": row[0],
-            "task_id": row[1],
-            "employee_name": row[2],
-            "task_title": row[3],
-            "old_deadline": str(row[4]) if row[4] else None,
-            "proposed_deadline": str(row[5]) if row[5] else None,
-            "reason": row[6],
-            "status": row[7],
-            "created_at": str(row[8]) if row[8] else None
-        } for row in rows])
+        return jsonify({"success": True, "message": "Reschedule request submitted successfully"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 @app.route("/api/admin/action_reschedule", methods=["POST"])
 def action_reschedule():
     try:
@@ -657,53 +750,6 @@ def action_reschedule():
         cur.close()
         conn.close()
         return jsonify({"success": True, "message": f"Request {action}d successfully!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-# -------------------------------------------------------------
-# Employee Profile Operations
-# -------------------------------------------------------------
-@app.route("/api/employee_profile/<int:employee_id>", methods=["GET"])
-def get_employee_profile(employee_id):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id, name, email, team, dob, profile_pic, joining_date FROM employees WHERE id = %s", (employee_id,))
-        emp_data = cur.fetchone()
-
-        if not emp_data:
-            cur.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Employee not found"}), 404
-
-        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status = 'Completed'", (employee_id,))
-        completed_tasks = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status IN ('Overdue', 'Delayed')", (employee_id,))
-        delayed_tasks = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s", (employee_id,))
-        total_tasks = cur.fetchone()[0]
-
-        efficiency = 100 if total_tasks == 0 else round((completed_tasks / total_tasks) * 100)
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "success": True,
-            "profile": {
-                "emp_code": f"EMP-2026{emp_data[0]:02d}",
-                "name": emp_data[1],
-                "email": emp_data[2],
-                "team": emp_data[3] if emp_data[3] else "Assign Team",
-                "dob": str(emp_data[4]) if emp_data[4] else "",
-                "profile_pic": emp_data[5] if emp_data[5] else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256",
-                "joining_date": str(emp_data[6]) if emp_data[6] else "",
-                "stats": {
-                    "efficiency": f"{efficiency}%",
-                    "completed": completed_tasks,
-                    "delayed": delayed_tasks
-                }
-            }
-        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

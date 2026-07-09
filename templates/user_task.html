@@ -10,22 +10,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
     
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="manifest" href="/static/manifest.json">
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
-      allowLocalhostAsSecureOrigin: true, // Laptop localhost testing ke liye ZAROORI hai
-      notifyButton: {
-        enable: true // Screen ke kono par Red Bell Icon dikhayega
-      }
-    });
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a",
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: { enable: true }
+        });
+        OneSignal.Notifications.requestPermission();
+      });
+    </script>
 
-    OneSignal.Notifications.requestPermission();
-  });
-</script>    <style>
+    <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
         body { background:#f8fafc; color:#1e293b; padding-bottom: 90px; }
 
@@ -45,7 +43,7 @@
         
         .header-right-group { display: flex; align-items: center; gap: 12px; }
 
-        /* FILTER DROPDOWN STYLE */
+        /* FILTER DROPDOWN */
         .filter-select {
             padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
             border: 1px solid #e2e8f0; outline: none; background: #fff; color: #334155;
@@ -55,31 +53,26 @@
 
         /* CONTAINER & CARDS */
         .container { max-width:1000px; margin:auto; padding:24px 16px; }
+        .task-list { display: flex; flex-direction: column; gap: 16px; margin-top: 10px; }
         
-        .task-list {
-            display: flex; flex-direction: column; gap: 16px; margin-top: 10px;
-        }
-        
-        /* INDIVIDUAL TASK CARD */
+        /* TASK CARD */
         .task-card {
             background: #fff; border-radius: 16px; padding: 20px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01); 
             border: 1px solid #e2e8f0;
             display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
+            transition: all 0.25s ease; position: relative; overflow: hidden;
         }
         .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border-color: #cbd5e1; }
         
-        /* Overdue Task Highlight */
+        /* Overdue Highlight (RED CARD) */
         .task-card.overdue-highlight {
-            background: #fff5f5;
-            border-left: 5px solid #ef4444;
-            border-color: #fee2e2;
+            background: #fff5f5 !important;
+            border-left: 5px solid #ef4444 !important;
+            border-color: #fee2e2 !important;
         }
 
-        /* Rescheduled Task Highlight */
+        /* Rescheduled Highlight */
         .task-card.rescheduled-card {
             border-left: 5px solid #0d6efd;
             background: #f0f7ff;
@@ -104,9 +97,7 @@
         .status-select.pending { background: #fef3c7; color: #d97706; }
         .status-select.ongoing { background: #dbeafe; color: #2563eb; }
         .status-select.completed { background: #dcfce7; color: #16a34a; }
-        .status-select.overdue { background: #fee2e2; color: #dc2626; }
-        
-        .status-select option { background: #fff; color: #0f172a; font-weight: 500; }
+        .status-select.overdue { background: #fee2e2; color: #dc2626; font-weight: 700; }
 
         /* RESCHEDULE BUTTON */
         .btn-reschedule {
@@ -116,7 +107,7 @@
         }
         .btn-reschedule:hover { background: #dc2626; }
 
-        /* COMPLETE TASK BUTTON (GREEN TICK) */
+        /* COMPLETE TICK BUTTON */
         .btn-complete-tick {
             background: #10b981; color: #fff; border: none; padding: 8px 14px;
             border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -124,14 +115,13 @@
         }
         .btn-complete-tick:hover { background: #059669; }
 
-        /* BADGES */
         .badge-rescheduled {
             background: #e0f2fe; color: #0369a1; padding: 4px 10px;
             border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid #bae6fd;
             display: inline-flex; align-items: center; gap: 4px; width: fit-content;
         }
 
-        /* MODAL STYLES */
+        /* MODAL */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.5); display: none; justify-content: center;
@@ -159,12 +149,10 @@
         .bottom {
             position:fixed; bottom:0; left:0; width:100%; background:white;
             display:flex; justify-content:space-around; padding:12px 0;
-            box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05), 0 -2px 4px -1px rgba(0,0,0,0.03); z-index: 100;
-            border-top: 1px solid #f1f5f9;
+            box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05); z-index: 100; border-top: 1px solid #f1f5f9;
         }
-        .bottom a { text-decoration:none; color:#64748b; font-size:12px; text-align:center; transition: 0.2s; font-weight: 500; }
-        .bottom i { display:block; font-size:20px; margin-bottom:4px; transition: 0.2s; }
-        .bottom a:hover { color: #6c5ce7; }
+        .bottom a { text-decoration:none; color:#64748b; font-size:12px; text-align:center; font-weight: 500; }
+        .bottom i { display:block; font-size:20px; margin-bottom:4px; }
         .active { color:#6c5ce7 !important; }
 
         @media(max-width: 768px) {
@@ -224,7 +212,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" onclick="closeRescheduleModal()">Cancel</button>
-                    <button type="submit" class="btn-submit">Update Deadline</button>
+                    <button type="submit" class="btn-submit">Submit Reschedule Request</button>
                 </div>
             </form>
         </div>
@@ -272,7 +260,15 @@
                 const response = await fetch(`/api/tasks/${loggedInUserId}`);
                 let rawTasks = await response.json();
 
-                allTasksArray = rawTasks.sort((a, b) => b.id - a.id);
+                const now = new Date();
+                // Check Overdue logic on Frontend
+                allTasksArray = rawTasks.map(t => {
+                    const taskDeadline = new Date(t.deadline);
+                    if (t.status !== 'Completed' && taskDeadline < now) {
+                        t.status = 'Overdue';
+                    }
+                    return t;
+                }).sort((a, b) => b.id - a.id);
 
                 generateMotivationLine(allTasksArray);
                 applyTaskFilter();
@@ -289,9 +285,9 @@
             const overdueTasks = tasks.filter(t => t.status === "Overdue").length;
 
             if (overdueTasks > 0) {
-                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, you have ${overdueTasks} overdue tasks. Reschedule or finish them now! ⚡`;
+                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, you have ${overdueTasks} overdue task(s). Reschedule or finish them now! ⚡`;
             } else if (activeTasks > 0) {
-                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, ${activeTasks} tasks are waiting for you! ✨`;
+                motivationElement.innerHTML = `Hey <strong>${loggedInUserName}</strong>, ${activeTasks} task(s) waiting for you! ✨`;
             } else if (tasks.length > 0) {
                 motivationElement.innerHTML = `Awesome job, <strong>${loggedInUserName}</strong>! All tasks caught up! 🎉`;
             } else {
@@ -322,7 +318,6 @@
             }
 
             filteredTasks.forEach(task => {
-                const statusClass = task.status ? task.status.toLowerCase() : 'pending';
                 const isOverdue = task.status === 'Overdue';
                 const isCompleted = task.status === 'Completed';
                 const isRescheduled = task.is_rescheduled || task.reschedule_requested;
@@ -331,18 +326,20 @@
                 if (isOverdue) cardClass += ' overdue-highlight';
                 else if (isRescheduled) cardClass += ' rescheduled-card';
 
-                const deadlineStyle = isCompleted ? 'color: #64748b;' : (isOverdue ? 'color: #ef4444;' : 'color: #0d6efd;');
-                const isDisabled = isCompleted ? 'disabled' : '';
+                const deadlineStyle = isCompleted ? 'color: #64748b;' : (isOverdue ? 'color: #ef4444; font-weight:700;' : 'color: #0d6efd;');
 
                 // Action Control Buttons Logic
                 let actionControlHtml = '';
 
                 if (isOverdue) {
                     actionControlHtml = `
-                        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                        <div style="display:flex; flex-direction:column; gap:8px; width:100%; align-items:flex-end;">
                             <span class="status-select overdue" style="text-align:center;">⚠️ Overdue</span>
                             <button class="btn-reschedule" onclick="openRescheduleModal(${task.id})">
                                 <i class="fa-solid fa-clock-rotate-left"></i> Reschedule
+                            </button>
+                            <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
+                                <i class="fa-solid fa-circle-check"></i> Complete Task
                             </button>
                         </div>
                     `;
@@ -353,10 +350,9 @@
                         </select>
                     `;
                 } else {
-                    // Normal or Rescheduled Pending/Ongoing Tasks
                     actionControlHtml = `
                         <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; width:100%;">
-                            <select class="status-select ${statusClass}" onchange="changeStatus(${task.id}, this)" ${isDisabled}>
+                            <select class="status-select ${task.status.toLowerCase()}" onchange="changeStatus(${task.id}, this)">
                                 <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
                                 <option value="Ongoing" ${task.status === 'Ongoing' ? 'selected' : ''}>🚀 Ongoing</option>
                                 <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>✅ Completed</option>
@@ -368,8 +364,7 @@
                     `;
                 }
 
-                // Rescheduled Badge Tag
-                const rescheduledBadge = isRescheduled ? `<div class="badge-rescheduled"><i class="fa-solid fa-rotate"></i> Rescheduled</div>` : '';
+                const rescheduledBadge = isRescheduled ? `<div class="badge-rescheduled"><i class="fa-solid fa-rotate"></i> Rescheduled Pending</div>` : '';
 
                 container.innerHTML += `
                 <div class="${cardClass}">
@@ -456,15 +451,15 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert("Task Rescheduled & Deadline Updated Successfully!");
+                    alert("✅ Reschedule Request Sent to Admin!");
                     closeRescheduleModal();
                     loadMyTasks(); 
                 } else {
-                    alert(result.message || "Failed to update deadline.");
+                    alert(result.message || "Failed to request reschedule.");
                 }
             } catch (err) {
                 console.error(err);
-                alert("Server Error while updating task deadline.");
+                alert("Server Error while sending reschedule request.");
             }
         }
     </script>
