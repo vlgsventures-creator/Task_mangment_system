@@ -10,18 +10,19 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# Render se DATABASE_URL environment variable padhega
+# Render Environment Variable (DATABASE_URL)
 DB_URL = os.environ.get("DATABASE_URL")
 
-# Render ka URL 'postgres://' se start hota hai, psycopg2 ko 'postgresql://' chahiye
+# Render Database URL format fix (psycopg2 compatible)
 if DB_URL and DB_URL.startswith("postgres://"):
     DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
 
-# PostgreSQL Connection Helper
+# Centralized DB Connection Helper
 def get_db_connection():
     if DB_URL:
         return psycopg2.connect(DB_URL)
     else:
+        # Fallback Local DB
         return psycopg2.connect(
             host="127.0.0.1",
             database="vlgsWorkspace_DB",
@@ -29,75 +30,15 @@ def get_db_connection():
             password="vlgs24"
         )
 
-# -------------------------
-# Pages (HTML Templates)
-# -------------------------
-
-@app.route("/")
-def login_page():
-    return render_template("login.html")
-
-@app.route("/user")
-def user_page():
-    return render_template("user.html")
-
-@app.route("/admin")
-def admin_page():
-    return render_template("admin.html")
-
-@app.route("/add_employee")
-def add_employee_page():
-    return render_template("add_employee.html")
-
-@app.route("/add-task")
-def add_task_page():
-    return render_template("add_task.html")
-
-@app.route("/task-records")
-def task_records_page():
-    return render_template("task_records.html")
-
-@app.route("/admin_notify")
-def admin_notification():
-    return render_template("admin_notification.html")
-
-@app.route("/admin_logs")
-def admin_logs_page():
-    return render_template("admin_logs.html")
-
-@app.route("/user_profile")
-def user_profile_page():
-    return render_template("user_profile.html")
-
-@app.route("/user_task")
-def user_task_page():
-    return render_template("user_task.html")
- 
-@app.route("/user_alerts")
-def user_alert_page():
-    return render_template("user_alert.html")
-
-@app.route('/OneSignalSDKWorker.js')
-def onesignal_worker():
-    return app.send_static_file('OneSignalSDKWorker.js')
-
-@app.route('/rescheduled_tasks_page')
-def rescheduled_tasks_page():
-    return render_template('rescheduled_tasks.html')
-
-@app.route("/api/rescheduled_tasks", methods=["GET"])
-def get_rescheduled_tasks_alias():
-    return get_admin_reschedule_requests()
-
-#------------------------------------------
-# Database Tables Create Karne Ka Function
-#------------------------------------------
+# -------------------------------------------------------------
+# Database Initializer (Tables & Auto-Healing Columns)
+# -------------------------------------------------------------
 def init_db():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        # 1. Admins Table (Login ke liye)
+
+        # 1. Admins Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admins (
                 id SERIAL PRIMARY KEY,
@@ -121,6 +62,13 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # Columns Auto-Repair check
+        cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100);")
+        cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS team VARCHAR(50);")
+        cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS dob DATE;")
+        cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS joining_date DATE;")
+        cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_pic TEXT;")
 
         # 3. Tasks Table
         cur.execute("""
@@ -173,7 +121,7 @@ def init_db():
             );
         """)
 
-        # Default Admin User Insert (Agar Na Ho)
+        # Default Admin User Insert
         cur.execute("""
             INSERT INTO admins (username, password)
             VALUES ('admin', 'admin123')
@@ -183,17 +131,71 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Remote Database Tables & Admin initialized successfully!")
+        print("✅ DB Schema Initialized Successfully!")
     except Exception as e:
         print("❌ DB Init Error:", e)
 
-# App start hote hi tables create honge
 with app.app_context():
     init_db()
 
-# --------------------------------------------
-# Notification & Push Helper Function
-# --------------------------------------------
+# -------------------------------------------------------------
+# Web Page Navigation Routes
+# -------------------------------------------------------------
+@app.route("/")
+def login_page():
+    return render_template("login.html")
+
+@app.route("/user")
+def user_page():
+    return render_template("user.html")
+
+@app.route("/admin")
+def admin_page():
+    return render_template("admin.html")
+
+@app.route("/add_employee", methods=["GET"])
+def add_employee_page():
+    return render_template("add_employee.html")
+
+@app.route("/add-task")
+def add_task_page():
+    return render_template("add_task.html")
+
+@app.route("/task-records")
+def task_records_page():
+    return render_template("task_records.html")
+
+@app.route("/admin_notify")
+def admin_notification():
+    return render_template("admin_notification.html")
+
+@app.route("/admin_logs")
+def admin_logs_page():
+    return render_template("admin_logs.html")
+
+@app.route("/user_profile")
+def user_profile_page():
+    return render_template("user_profile.html")
+
+@app.route("/user_task")
+def user_task_page():
+    return render_template("user_task.html")
+
+@app.route("/user_alerts")
+def user_alert_page():
+    return render_template("user_alert.html")
+
+@app.route('/OneSignalSDKWorker.js')
+def onesignal_worker():
+    return app.send_static_file('OneSignalSDKWorker.js')
+
+@app.route('/rescheduled_tasks_page')
+def rescheduled_tasks_page():
+    return render_template('rescheduled_tasks.html')
+
+# -------------------------------------------------------------
+# Push Notification Helper
+# -------------------------------------------------------------
 def create_notification(employee_id, title, message, notif_type="Assigned"):
     try:
         conn = get_db_connection()
@@ -206,7 +208,7 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
         cur.close()
         conn.close()
     except Exception as e:
-        print(f"Database Insert Error: {e}")
+        print(f"Notification DB Insert Error: {e}")
 
     ONESIGNAL_APP_ID = "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a"
     ONESIGNAL_API_KEY = "os_v2_app_x4phyq3l2jfs5cr7q7din52ifl5cweowzpsenjngvur6jpti65i4lkn4zori7bt3fzia7xzncbkrffjf5k65jb54xtepkvl6r4n432a"
@@ -225,115 +227,78 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
     }
 
     try:
-        req = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
-        if req.status_code == 200:
-            print("Push Notification Sent Successfully via OneSignal!")
-        else:
-            print(f"OneSignal Error: {req.status_code} - {req.text}")
+        requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
     except Exception as err:
-        print("OneSignal API Request Failed:", err)
+        print("OneSignal Error:", err)
 
-# -------------------------
-# Login & Logout APIs
-# -------------------------
+# -------------------------------------------------------------
+# Authentication APIs
+# -------------------------------------------------------------
 @app.route("/login", methods=["POST"])
 def login():
     try:
-        data = request.get_json()
-        username = str(data["username"]).strip()
-        password = str(data["password"]).strip()
+        data = request.get_json() or {}
+        username = str(data.get("username", "")).strip()
+        password = str(data.get("password", "")).strip()
         
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id, username FROM admins WHERE LOWER(username)=LOWER(%s) AND password=%s",
-            (username, password)
-        )
+        cur.execute("SELECT id, username FROM admins WHERE LOWER(username)=LOWER(%s) AND password=%s", (username, password))
         admin_user = cur.fetchone()
 
         if admin_user:
             cur.close()
             conn.close()
-            return jsonify({
-                "success": True,
-                "role": "admin",
-                "name": admin_user[1],
-                "id": admin_user[0]
-            })
+            return jsonify({"success": True, "role": "admin", "name": admin_user[1], "id": admin_user[0]})
 
-        cur.execute(
-            "SELECT id, name FROM employees WHERE LOWER(name)=LOWER(%s) AND password=%s",
-            (username, password)
-        )
+        cur.execute("SELECT id, name FROM employees WHERE LOWER(name)=LOWER(%s) AND password=%s", (username, password))
         employee_user = cur.fetchone()
 
         if employee_user:
-            emp_id = employee_user[0]
-            emp_name = employee_user[1]
+            emp_id, emp_name = employee_user[0], employee_user[1]
             ip_addr = request.remote_addr
 
-            cur.execute("""
-                INSERT INTO employee_sessions (employee_id, login_time, ip_address)
-                VALUES (%s, CURRENT_TIMESTAMP, %s) RETURNING id
-            """, (emp_id, ip_addr))
-            
+            cur.execute("INSERT INTO employee_sessions (employee_id, login_time, ip_address) VALUES (%s, CURRENT_TIMESTAMP, %s) RETURNING id", (emp_id, ip_addr))
             session_id = cur.fetchone()[0]
             conn.commit()
             cur.close()
             conn.close()
 
-            create_notification(emp_id, "User Login", f"{emp_name} has logged into the workspace.", "Logs")
-
-            return jsonify({
-                "success": True,
-                "role": "employee",
-                "name": emp_name,
-                "id": emp_id,
-                "session_id": session_id
-            })
+            create_notification(emp_id, "User Login", f"{emp_name} logged in.", "Logs")
+            return jsonify({"success": True, "role": "employee", "name": emp_name, "id": emp_id, "session_id": session_id})
 
         cur.close()
         conn.close()
-        return jsonify({"success": False, "message": "Wrong Username or Password"})
-
+        return jsonify({"success": False, "message": "Invalid Username or Password"}), 401
     except Exception as e:
-        print("ERROR:", e)
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         session_id = data.get("session_id")
 
         if not session_id:
-            return jsonify({"success": False, "message": "No active session found"}), 400
+            return jsonify({"success": False, "message": "Session ID required"}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
-        
         cur.execute("SELECT e.id, e.name FROM employee_sessions s JOIN employees e ON s.employee_id = e.id WHERE s.id = %s", (session_id,))
         emp_data = cur.fetchone()
         
-        cur.execute("""
-            UPDATE employee_sessions 
-            SET logout_time = CURRENT_TIMESTAMP 
-            WHERE id = %s AND logout_time IS NULL
-        """, (session_id,))
-        
+        cur.execute("UPDATE employee_sessions SET logout_time = CURRENT_TIMESTAMP WHERE id = %s AND logout_time IS NULL", (session_id,))
         conn.commit()
         cur.close()
         conn.close()
         
         if emp_data:
-            create_notification(emp_data[0], "User Logout", f"{emp_data[1]} has logged out.", "Logs")
+            create_notification(emp_data[0], "User Logout", f"{emp_data[1]} logged out.", "Logs")
 
         return jsonify({"success": True, "message": "Logged out successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/api/session_logs", methods=["GET"])
 def get_session_logs():
@@ -350,31 +315,33 @@ def get_session_logs():
         cur.close()
         conn.close()
 
-        logs = [{
+        return jsonify([{
             "id": row[0],
             "employee_name": row[1],
             "login_time": str(row[2]),
             "logout_time": str(row[3]) if row[3] else "Active Session",
             "ip_address": row[4] if row[4] else "N/A"
-        } for row in rows]
-
-        return jsonify(logs)
+        } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# -------------------------
-# Employee Management
-# -------------------------
+# -------------------------------------------------------------
+# Employee Operations (ADD / FETCH)
+# -------------------------------------------------------------
 @app.route('/add_employee', methods=['POST'])
+@app.route('/api/add_employee', methods=['POST'])
 def add_employee():
     try:
-        data = request.get_json()
-        name = data['name']
-        email = data['email']
-        password = data['password']
-        team = data.get('team')
-        dob = data.get('dob')
-        joining_date = data.get('joining_date')
+        data = request.get_json() or {}
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password', '123456')
+        team = data.get('team', 'General')
+        dob = data.get('dob') if data.get('dob') else None
+        joining_date = data.get('joining_date') if data.get('joining_date') else None
+
+        if not name or not email:
+            return jsonify({"status": "error", "message": "Name and Email are required"}), 400
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -382,16 +349,18 @@ def add_employee():
         cur.execute("""
             INSERT INTO employees(name, email, password, team, dob, joining_date)
             VALUES(%s, %s, %s, %s, %s, %s)
+            RETURNING id;
         """, (name, email, password, team, dob, joining_date))
         
+        new_id = cur.fetchone()[0]
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({"status": "success", "message": "Employee Added Successfully"})
+        return jsonify({"status": "success", "message": "Employee Added Successfully", "id": new_id})
     except Exception as e:
+        print("❌ Error in add_employee:", str(e))
         return jsonify({"status": "error", "error": str(e)}), 500
-
 
 @app.route("/api/employees", methods=["GET"])
 def get_employees():
@@ -403,30 +372,26 @@ def get_employees():
         cur.close()
         conn.close()
 
-        employees = [
-            {
-                "id": row[0], 
-                "name": row[1],
-                "email": row[2],
-                "team": row[3],
-                "dob": str(row[4]) if row[4] else None,
-                "joining_date": str(row[5]) if row[5] else None
-            } 
-            for row in rows
-        ]
-        return jsonify(employees)
+        return jsonify([{
+            "id": row[0], 
+            "name": row[1],
+            "email": row[2],
+            "team": row[3],
+            "dob": str(row[4]) if row[4] else None,
+            "joining_date": str(row[5]) if row[5] else None
+        } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# -------------------------
-# Tasks Management
-# -------------------------
+# -------------------------------------------------------------
+# Tasks Management APIs
+# -------------------------------------------------------------
 @app.route("/api/add_task", methods=["POST"])
 def add_task():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         title = data["title"]
-        description = data["description"]
+        description = data.get("description", "")
         assigned_to = data["assigned_to"]
         deadline = data["deadline"]
 
@@ -441,12 +406,10 @@ def add_task():
         cur.close()
         conn.close()
 
-        create_notification(assigned_to, "New Task Assigned", f"You have been assigned: {title}", "Assigned")
-
+        create_notification(assigned_to, "New Task Assigned", f"Assigned: {title}", "Assigned")
         return jsonify({"success": True, "message": "Task Created Successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/api/tasks/<int:employee_id>", methods=["GET"])
 def employee_tasks(employee_id):
@@ -457,16 +420,10 @@ def employee_tasks(employee_id):
         
         cur.execute("""
             SELECT 
-                t.id, 
-                t.title, 
-                t.description, 
-                t.deadline, 
-                t.status, 
-                t.created_at,
+                t.id, t.title, t.description, t.deadline, t.status, t.created_at,
                 CASE WHEN r.id IS NOT NULL THEN TRUE ELSE FALSE END AS reschedule_requested
             FROM tasks t
-            LEFT JOIN reschedule_requests r 
-                ON t.id = r.task_id AND r.status = 'Pending'
+            LEFT JOIN reschedule_requests r ON t.id = r.task_id AND r.status = 'Pending'
             WHERE t.assigned_to = %s
             ORDER BY t.id DESC
         """, (employee_id,))
@@ -474,7 +431,7 @@ def employee_tasks(employee_id):
         cur.close()
         conn.close()
 
-        tasks = [{
+        return jsonify([{
             "id": row[0],
             "title": row[1],
             "description": row[2],
@@ -482,51 +439,41 @@ def employee_tasks(employee_id):
             "status": row[4],
             "created_at": str(row[5]) if row[5] else "N/A",
             "reschedule_requested": row[6]
-        } for row in rows]
-
-        return jsonify(tasks)
+        } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/update_task_status", methods=["POST"])
 def update_task_status_post():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         task_id = data["id"]
         status = data["status"]
         
         conn = get_db_connection()
         cur = conn.cursor()
-        
         cur.execute("SELECT assigned_to, title FROM tasks WHERE id=%s", (task_id,))
         task_info = cur.fetchone()
 
         if status == "Completed":
-            cur.execute("""
-                UPDATE tasks
-                SET status=%s, completed_at=CURRENT_TIMESTAMP
-                WHERE id=%s
-            """, (status, task_id))
+            cur.execute("UPDATE tasks SET status=%s, completed_at=CURRENT_TIMESTAMP WHERE id=%s", (status, task_id))
         else:
             cur.execute("UPDATE tasks SET status=%s WHERE id=%s", (status, task_id))
 
         conn.commit()
         cur.close()
         conn.close()
-        
+
         if task_info:
-            emp_id, task_title = task_info[0], task_info[1]
-            notif_type = "Completed" if status == "Completed" else "Assigned"
-            create_notification(emp_id, f"Task Status: {status}", f"Task '{task_title}' status shifted to {status}.", notif_type)
+            create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
 
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# ----------------------------------
-# User Side & Notifications APIs
-# ----------------------------------
+# -------------------------------------------------------------
+# Notifications & Dashboard Stats
+# -------------------------------------------------------------
 @app.route('/api/get_notifications/<int:employee_id>', methods=['GET'])
 def get_user_notifications(employee_id):
     try:
@@ -543,7 +490,6 @@ def get_user_notifications(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/check_overdue_alerts/<int:employee_id>', methods=['GET'])
 def check_overdue_alerts(employee_id):
     try:
@@ -555,11 +501,10 @@ def check_overdue_alerts(employee_id):
         
         if overdue_tasks:
             task_names = ", ".join([task['title'] for task in overdue_tasks])
-            msg = f"Attention! You have overdue tasks: {task_names}. Please complete them immediately."
-            create_notification(employee_id, "⚠️ Overdue Reminder", msg, notif_type="Overdue")
+            create_notification(employee_id, "⚠️ Overdue Reminder", f"Overdue tasks: {task_names}", notif_type="Overdue")
             cur.close()
             conn.close()
-            return jsonify({"has_overdue": True, "message": "Reminder: You have overdue tasks pending!"})
+            return jsonify({"has_overdue": True, "message": "Overdue tasks pending!"})
         
         cur.close()
         conn.close()
@@ -567,66 +512,27 @@ def check_overdue_alerts(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/today_tasks/<int:employee_id>", methods=["GET"])
-def today_tasks(employee_id):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, title, description, deadline, status
-            FROM tasks
-            WHERE assigned_to=%s
-            AND DATE(deadline)=CURRENT_DATE
-            ORDER BY deadline ASC
-        """, (employee_id,))
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        tasks = [{
-            "id": row[0],
-            "title": row[1],
-            "description": row[2],
-            "deadline": str(row[3]),
-            "status": row[4]
-        } for row in rows]
-
-        return jsonify(tasks)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# -------------------------
-# Admin Notifications APIs
-# -------------------------
 @app.route("/api/admin_notifications", methods=["GET"])
 def admin_notifications():
     try:
         update_overdue_tasks()
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT id, title, message, is_read, created_at, type
-            FROM notifications
-            ORDER BY created_at DESC
-        """)
+        cur.execute("SELECT id, title, message, is_read, created_at, type FROM notifications ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
-        data = [{
+        return jsonify([{
             "id": row[0],
             "title": row[1],
             "message": row[2],
             "is_read": row[3],
             "created_at": str(row[4]),
             "type": row[5] if row[5] else "Assigned"
-        } for row in rows]
-
-        return jsonify(data)
+        } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/admin_notification_count", methods=["GET"])
 def admin_notification_count():
@@ -640,51 +546,6 @@ def admin_notification_count():
         return jsonify({"count": count})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/read_all_notifications", methods=["PUT"])
-def read_all_notifications():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE notifications SET is_read=true WHERE is_read=false")
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/task_records", methods=["GET"])
-def task_records_api():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT t.id, e.name, t.title, t.description, t.deadline, t.status, t.created_at
-            FROM tasks t
-            JOIN employees e ON t.assigned_to = e.id
-            ORDER BY t.created_at DESC
-        """)
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        tasks = [{
-            "id": row[0],
-            "employee": row[1],
-            "title": row[2],
-            "description": row[3] if row[3] else "",
-            "deadline": str(row[4]),
-            "status": row[5],
-            "created_at": str(row[6])
-        } for row in rows]
-
-        return jsonify(tasks)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/dashboard_counts", methods=["GET"])
 def dashboard_counts():
@@ -717,17 +578,11 @@ def dashboard_counts():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 def update_overdue_tasks():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("""
-            UPDATE tasks
-            SET status='Overdue'
-            WHERE deadline < CURRENT_TIMESTAMP
-            AND status NOT IN ('Completed','Overdue')
-        """)
+        cur.execute("UPDATE tasks SET status='Overdue' WHERE deadline < CURRENT_TIMESTAMP AND status NOT IN ('Completed','Overdue')")
         conn.commit()
         cur.close()
         conn.close()
@@ -735,26 +590,18 @@ def update_overdue_tasks():
         print("Error updating overdue tasks:", e)
 
 # -------------------------------------------------------------
-# RESCHEDULE REQUESTS (User & Admin Handlers)
+# Reschedule Requests Handlers
 # -------------------------------------------------------------
-
 @app.route('/api/rescheduled_tasks', methods=['GET'])
 def get_rescheduled_tasks():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
         cur.execute("""
             SELECT 
-                r.id AS request_id,
-                t.id AS task_id,
-                e.name AS employee_name,
-                t.title AS task_title,
-                t.deadline AS old_deadline,
-                r.proposed_deadline AS new_deadline,
-                r.reason,
-                r.status,
-                r.created_at
+                r.id AS request_id, t.id AS task_id, e.name AS employee_name,
+                t.title AS task_title, t.deadline AS old_deadline,
+                r.proposed_deadline AS new_deadline, r.reason, r.status, r.created_at
             FROM reschedule_requests r
             JOIN tasks t ON r.task_id = t.id
             JOIN employees e ON r.employee_id = e.id
@@ -764,80 +611,30 @@ def get_rescheduled_tasks():
         cur.close()
         conn.close()
 
-        requests = [
-            {
-                "request_id": row[0],
-                "task_id": row[1],
-                "employee_name": row[2],
-                "employee": row[2],
-                "task_title": row[3],
-                "title": row[3],
-                "old_deadline": str(row[4]) if row[4] else None,
-                "proposed_deadline": str(row[5]) if row[5] else None,
-                "new_deadline": str(row[5]) if row[5] else None,
-                "reason": row[6],
-                "status": row[7],
-                "created_at": str(row[8]) if row[8] else None
-            }
-            for row in rows
-        ]
-        return jsonify(requests)
+        return jsonify([{
+            "request_id": row[0],
+            "task_id": row[1],
+            "employee_name": row[2],
+            "task_title": row[3],
+            "old_deadline": str(row[4]) if row[4] else None,
+            "proposed_deadline": str(row[5]) if row[5] else None,
+            "reason": row[6],
+            "status": row[7],
+            "created_at": str(row[8]) if row[8] else None
+        } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-
-@app.route("/api/admin/reschedule_requests", methods=["GET"])
-def get_admin_reschedule_requests():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT 
-                r.id AS request_id,
-                r.task_id,
-                t.title AS task_title,
-                e.name AS employee_name,
-                t.deadline AS old_deadline,
-                r.proposed_deadline,
-                r.reason,
-                r.status,
-                r.created_at
-            FROM reschedule_requests r
-            JOIN tasks t ON r.task_id = t.id
-            JOIN employees e ON r.employee_id = e.id
-            WHERE r.status = 'Pending'
-            ORDER BY r.created_at DESC
-        """)
-        requests_list = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        for req in requests_list:
-            req['old_deadline'] = str(req['old_deadline']) if req['old_deadline'] else None
-            req['proposed_deadline'] = str(req['proposed_deadline']) if req['proposed_deadline'] else None
-            req['created_at'] = str(req['created_at']) if req['created_at'] else None
-
-        return jsonify(requests_list)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/admin/action_reschedule", methods=["POST"])
 def action_reschedule():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         request_id = data.get("request_id")
         action = data.get("action")
 
         conn = get_db_connection()
         cur = conn.cursor()
-
-        cur.execute("""
-            SELECT task_id, employee_id, proposed_deadline 
-            FROM reschedule_requests 
-            WHERE id = %s
-        """, (request_id,))
+        cur.execute("SELECT task_id, employee_id, proposed_deadline FROM reschedule_requests WHERE id = %s", (request_id,))
         req_data = cur.fetchone()
 
         if not req_data:
@@ -849,111 +646,43 @@ def action_reschedule():
 
         if action == 'approve':
             cur.execute("UPDATE reschedule_requests SET status = 'Approved' WHERE id = %s", (request_id,))
-            
-            cur.execute("""
-                UPDATE tasks 
-                SET deadline = %s, status = 'Pending' 
-                WHERE id = %s
-            """, (new_deadline, task_id))
-
-            create_notification(
-                emp_id, 
-                "✅ Reschedule Approved", 
-                "Your reschedule request has been approved by Admin! Deadline updated.", 
-                "Assigned"
-            )
+            cur.execute("UPDATE tasks SET deadline = %s, status = 'Pending' WHERE id = %s", (new_deadline, task_id))
+            create_notification(emp_id, "✅ Reschedule Approved", "Request approved by Admin!", "Assigned")
 
         elif action == 'reject':
             cur.execute("UPDATE reschedule_requests SET status = 'Rejected' WHERE id = %s", (request_id,))
-
-            create_notification(
-                emp_id, 
-                "❌ Reschedule Rejected", 
-                "Your reschedule request was rejected by Admin.", 
-                "Overdue"
-            )
+            create_notification(emp_id, "❌ Reschedule Rejected", "Request rejected by Admin.", "Overdue")
 
         conn.commit()
         cur.close()
         conn.close()
-
         return jsonify({"success": True, "message": f"Request {action}d successfully!"})
-
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# -------------------------
-# Dynamic Employee Profile APIs
-# -------------------------
-@app.route("/api/update_profile/<int:employee_id>", methods=["POST"])
-def update_profile(employee_id):
-    try:
-        data = request.get_json()
-        dob = data.get("dob")
-        team = data.get("team")
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            UPDATE employees 
-            SET dob = %s, team = %s 
-            WHERE id = %s
-        """, (dob if dob else None, team, employee_id))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"success": True, "message": "Profile updated successfully"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/upload_avatar/<int:employee_id>", methods=["POST"])
-def upload_avatar(employee_id):
-    try:
-        data = request.get_json()
-        image_data = data.get("image")
-
-        if not image_data:
-            return jsonify({"success": False, "message": "No image data found"}), 400
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE employees SET profile_pic = %s WHERE id = %s", (image_data, employee_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-        
-        return jsonify({"success": True, "message": "Avatar updated successfully"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
+# -------------------------------------------------------------
+# Employee Profile Operations
+# -------------------------------------------------------------
 @app.route("/api/employee_profile/<int:employee_id>", methods=["GET"])
 def get_employee_profile(employee_id):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        cur.execute("""
-            SELECT id, name, email, team, dob, profile_pic, joining_date 
-            FROM employees 
-            WHERE id = %s
-        """, (employee_id,))
+        cur.execute("SELECT id, name, email, team, dob, profile_pic, joining_date FROM employees WHERE id = %s", (employee_id,))
         emp_data = cur.fetchone()
-        
+
         if not emp_data:
             cur.close()
             conn.close()
             return jsonify({"success": False, "message": "Employee not found"}), 404
-            
+
         cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status = 'Completed'", (employee_id,))
         completed_tasks = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s AND status IN ('Overdue', 'Delayed')", (employee_id,))
         delayed_tasks = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = %s", (employee_id,))
         total_tasks = cur.fetchone()[0]
-        
+
         efficiency = 100 if total_tasks == 0 else round((completed_tasks / total_tasks) * 100)
         cur.close()
         conn.close()
@@ -977,36 +706,6 @@ def get_employee_profile(employee_id):
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-    
 
-# -------------------------
-# Auto-Cleanup Tasks (Older than 2 Weeks)
-# -------------------------
-@app.route("/api/admin/cleanup_old_tasks", methods=["DELETE"])
-def cleanup_old_tasks():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            DELETE FROM tasks 
-            WHERE status = 'Completed' 
-            AND (completed_at < NOW() - INTERVAL '14 days' OR deadline < NOW() - INTERVAL '14 days')
-        """)
-        
-        deleted_count = cur.rowcount
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "success": True, 
-            "message": f"Successfully deleted {deleted_count} tasks older than 2 weeks!"
-        })
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-    
-       
 if __name__ == "__main__":
     app.run(debug=True)
