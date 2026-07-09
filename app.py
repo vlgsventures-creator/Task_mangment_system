@@ -68,7 +68,8 @@ def init_db():
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS dob DATE;")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS joining_date DATE;")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_pic TEXT;")
-
+        # reschedule_requests table me old_deadline column auto-add karega
+        cur.execute("ALTER TABLE reschedule_requests ADD COLUMN IF NOT EXISTS old_deadline TIMESTAMP;")
         # 3. Tasks Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -573,8 +574,7 @@ def update_task_status_post():
 
 # -------------------------------------------------------------
 # Reschedule Handlers (Direct Self Reschedule - No Approval)
-# -------------------------------------------------------------
-@app.route("/api/request_reschedule", methods=["POST"])
+# -------------------------------------------------------------@app.route("/api/request_reschedule", methods=["POST"])
 def request_reschedule():
     try:
         data = request.get_json() or {}
@@ -586,18 +586,23 @@ def request_reschedule():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # 1. Direct Task Deadline Update + Mark Rescheduled + Reset Status to Pending
+        # 1. Pehle current deadline (purani deadline) fetch karein
+        cur.execute("SELECT deadline FROM tasks WHERE id = %s", (task_id,))
+        task_data = cur.fetchone()
+        old_deadline = task_data[0] if task_data else None
+
+        # 2. Reschedule Request Log karein (purani aur nayi deadline dono save karein)
+        cur.execute("""
+            INSERT INTO reschedule_requests (task_id, employee_id, old_deadline, proposed_deadline, reason, status)
+            VALUES (%s, %s, %s, %s, %s, 'Approved')
+        """, (task_id, employee_id, old_deadline, proposed_deadline, reason))
+
+        # 3. Direct Task Deadline Update karein + Status Pending set karein
         cur.execute("""
             UPDATE tasks 
             SET deadline = %s, status = 'Pending', is_rescheduled = TRUE 
             WHERE id = %s
         """, (proposed_deadline, task_id))
-        
-        # 2. Reschedule History Log
-        cur.execute("""
-            INSERT INTO reschedule_requests (task_id, employee_id, proposed_deadline, reason, status)
-            VALUES (%s, %s, %s, %s, 'Approved')
-        """, (task_id, employee_id, proposed_deadline, reason))
         
         conn.commit()
         cur.close()
@@ -612,44 +617,39 @@ def get_rescheduled_tasks():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Direct query from tasks table where is_rescheduled = TRUE
+        
+        # HTML Frontend keys ke according exact structure return hoga
         cur.execute("""
             SELECT 
-                t.id, 
-                COALESCE(e.name, 'Unassigned') AS employee_name, 
-                t.title, 
-                t.description, 
-                t.deadline, 
-                t.status, 
-                t.created_at,
-                r.reason
-            FROM tasks t
+                r.id AS request_id,
+                t.id AS task_id,
+                COALESCE(e.name, 'Unassigned') AS employee_name,
+                t.title AS task_title,
+                r.old_deadline,
+                r.proposed_deadline,
+                COALESCE(r.reason, 'No reason provided') AS reason,
+                t.status AS task_status
+            FROM reschedule_requests r
+            JOIN tasks t ON r.task_id = t.id
             LEFT JOIN employees e ON t.assigned_to = e.id
-            LEFT JOIN (
-                SELECT DISTINCT ON (task_id) task_id, reason 
-                FROM reschedule_requests 
-                ORDER BY task_id, id DESC
-            ) r ON t.id = r.task_id
-            WHERE t.is_rescheduled = TRUE
-            ORDER BY t.id DESC
+            ORDER BY r.id DESC
         """)
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
         return jsonify([{
-            "id": row[0],
-            "employee": row[1],
-            "title": row[2],
-            "description": row[3],
-            "deadline": str(row[4]) if row[4] else "",
-            "status": row[5],  # Ab agar ye Complete ho jayega to yahan 'Completed' hi dikhai dega!
-            "created_at": str(row[6]) if row[6] else "",
-            "reason": row[7] if row[7] else "N/A"
+            "request_id": row[0],
+            "task_id": row[1],
+            "employee_name": row[2],
+            "task_title": row[3],
+            "old_deadline": str(row[4]) if row[4] else "",
+            "proposed_deadline": str(row[5]) if row[5] else "",
+            "reason": row[6],
+            "status": row[7]
         } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 # -------------------------------------------------------------
 # Notifications & Dashboard Stats
 # -------------------------------------------------------------
