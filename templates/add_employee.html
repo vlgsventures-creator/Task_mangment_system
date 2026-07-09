@@ -160,7 +160,7 @@ if(name=="" || email=="" || password=="" || team=="" || dob=="" || joiningDate==
     return;
 }
 
-fetch("http://127.0.0.1:5000/add_employee", {
+fetch("/add_employee", {
     method: "POST",
     headers: {
         "Content-Type": "application/json"

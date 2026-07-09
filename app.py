@@ -223,7 +223,7 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
         "included_segments": ["All Users"],
         "contents": {"en": message},
         "headings": {"en": title},
-        "url": "http://localhost:5000/user_task"
+        "url": "/user_task"
     }
 
     try:
@@ -704,6 +704,28 @@ def get_employee_profile(employee_id):
                 }
             }
         })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# -------------------------------------------------------------
+# Auto-Cleanup Tasks (Older than 2 Weeks)
+# -------------------------------------------------------------
+@app.route("/api/admin/cleanup_old_tasks", methods=["DELETE"])
+def cleanup_old_tasks():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM tasks 
+            WHERE status = 'Completed' 
+            AND (completed_at < NOW() - INTERVAL '14 days' OR deadline < NOW() - INTERVAL '14 days')
+        """)
+        deleted_count = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": f"Successfully deleted {deleted_count} tasks older than 2 weeks!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
