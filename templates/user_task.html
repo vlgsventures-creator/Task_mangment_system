@@ -296,94 +296,106 @@
         }
 
         function applyTaskFilter() {
-            const filterValue = document.getElementById("taskFilter").value;
-            const container = document.getElementById("tasksContainer");
-            container.innerHTML = "";
+    const filterValue = document.getElementById("taskFilter").value;
+    const container = document.getElementById("tasksContainer");
+    container.innerHTML = "";
 
-            let filteredTasks = allTasksArray;
+    let filteredTasks = allTasksArray;
 
-            if (filterValue === "Rescheduled") {
-                filteredTasks = allTasksArray.filter(task => task.is_rescheduled || task.reschedule_requested);
-            } else if (filterValue !== "All") {
-                filteredTasks = allTasksArray.filter(task => task.status === filterValue);
-            }
+    if (filterValue === "Rescheduled") {
+        filteredTasks = allTasksArray.filter(task => task.is_rescheduled);
+    } else if (filterValue !== "All") {
+        filteredTasks = allTasksArray.filter(task => task.status === filterValue);
+    }
 
-            if (filteredTasks.length === 0) {
-                container.innerHTML = `
-                <div style='text-align:center; padding:50px 20px; background:#fff; border-radius:16px; color:#64748b; border: 1px solid #e2e8f0;'>
-                    <i class="fa-solid fa-folder-open" style="font-size:40px; color:#cbd5e1; margin-bottom:12px;"></i>
-                    <p style="font-weight:500; font-size:15px;">No ${filterValue !== 'All' ? filterValue.toLowerCase() : ''} tasks found.</p>
-                </div>`;
-                return;
-            }
+    if (filteredTasks.length === 0) {
+        container.innerHTML = `
+        <div style='text-align:center; padding:40px; background:#fff; border-radius:12px; color:#64748b;'>
+            <p>No ${filterValue !== 'All' ? filterValue.toLowerCase() : ''} tasks found.</p>
+        </div>`;
+        return;
+    }
 
-            filteredTasks.forEach(task => {
-                const isOverdue = task.status === 'Overdue';
-                const isCompleted = task.status === 'Completed';
-                const isRescheduled = task.is_rescheduled || task.reschedule_requested;
+    filteredTasks.forEach(task => {
+        const isOverdue = task.status === 'Overdue';
+        const isCompleted = task.status === 'Completed';
+        const isRescheduled = task.is_rescheduled;
 
-                let cardClass = 'task-card';
-                if (isOverdue) cardClass += ' overdue-highlight';
-                else if (isRescheduled) cardClass += ' rescheduled-card';
+        let cardClass = 'task-card';
+        if (isOverdue) cardClass += ' overdue-highlight';
+        else if (isRescheduled) cardClass += ' rescheduled-card';
 
-                const deadlineStyle = isCompleted ? 'color: #64748b;' : (isOverdue ? 'color: #ef4444; font-weight:700;' : 'color: #0d6efd;');
+        let actionControlHtml = '';
 
-                // Action Control Buttons Logic
-                let actionControlHtml = '';
-
-                if (isOverdue) {
-                    actionControlHtml = `
-                        <div style="display:flex; flex-direction:column; gap:8px; width:100%; align-items:flex-end;">
-                            <span class="status-select overdue" style="text-align:center;">⚠️ Overdue</span>
-                            <button class="btn-reschedule" onclick="openRescheduleModal(${task.id})">
-                                <i class="fa-solid fa-clock-rotate-left"></i> Reschedule
-                            </button>
-                            <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
-                                <i class="fa-solid fa-circle-check"></i> Complete Task
-                            </button>
-                        </div>
-                    `;
-                } else if (isCompleted) {
-                    actionControlHtml = `
-                        <select class="status-select completed" disabled>
-                            <option value="Completed" selected>✅ Completed</option>
-                        </select>
-                    `;
-                } else {
-                    actionControlHtml = `
-                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; width:100%;">
-                            <select class="status-select ${task.status.toLowerCase()}" onchange="changeStatus(${task.id}, this)">
-                                <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
-                                <option value="Ongoing" ${task.status === 'Ongoing' ? 'selected' : ''}>🚀 Ongoing</option>
-                                <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>✅ Completed</option>
-                            </select>
-                            <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
-                                <i class="fa-solid fa-circle-check"></i> Mark Complete
-                            </button>
-                        </div>
-                    `;
-                }
-
-                const rescheduledBadge = isRescheduled ? `<div class="badge-rescheduled"><i class="fa-solid fa-rotate"></i> Rescheduled Pending</div>` : '';
-
-                container.innerHTML += `
-                <div class="${cardClass}">
-                    <div class="task-info">
-                        ${rescheduledBadge}
-                        <h3>${task.title}</h3>
-                        <p>${task.description || "No description provided."}</p>
-                        <div class="task-dates">
-                            <span><i class="fa-solid fa-calendar-plus" style="color: #94a3b8;"></i> Assigned: <strong>${formatDateTime(task.created_at)}</strong></span>
-                            <span><i class="fa-solid fa-clock" style="color: #94a3b8;"></i> Deadline: <strong style="${deadlineStyle}">${formatDateTime(task.deadline)}</strong></span>
-                        </div>
-                    </div>
-                    <div class="task-actions">
-                        ${actionControlHtml}
-                    </div>
-                </div>`;
-            });
+        if (isCompleted) {
+            // Completed Task State
+            actionControlHtml = `
+                <span style="background:#dcfce7; color:#15803d; padding:6px 14px; border-radius:20px; font-weight:600; font-size:13px;">
+                    ✅ Completed
+                </span>
+            `;
+        } else if (isOverdue) {
+            // Overdue State: Show Reschedule + Complete
+            actionControlHtml = `
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                    <span style="background:#fee2e2; color:#b91c1c; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600;">⚠️ Overdue</span>
+                    <button class="btn-reschedule" onclick="openRescheduleModal(${task.id})">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Reschedule
+                    </button>
+                    <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
+                        <i class="fa-solid fa-circle-check"></i> Complete Task
+                    </button>
+                </div>
+            `;
+        } else {
+            // Normal Pending State (Reschedule button gayab ho chuka hoga)
+            actionControlHtml = `
+                <button class="btn-complete-tick" onclick="markAsCompletedDirect(${task.id})">
+                    <i class="fa-solid fa-circle-check"></i> Mark Complete
+                </button>
+            `;
         }
 
+        const rescheduledBadge = isRescheduled ? `<div class="badge-rescheduled"><i class="fa-solid fa-rotate"></i> Rescheduled</div>` : '';
+
+        container.innerHTML += `
+        <div class="${cardClass}">
+            <div class="task-info">
+                ${rescheduledBadge}
+                <h3>${task.title}</h3>
+                <p>${task.description || "No description provided."}</p>
+                <div class="task-dates">
+                    <span>Assigned: <strong>${formatDateTime(task.created_at)}</strong></span>
+                    <span>Deadline: <strong>${formatDateTime(task.deadline)}</strong></span>
+                </div>
+            </div>
+            <div class="task-actions">
+                ${actionControlHtml}
+            </div>
+        </div>`;
+    });
+}
+
+// Fixed Direct Complete Handler
+async function markAsCompletedDirect(taskId) {
+    try {
+        const response = await fetch("/api/update_task_status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: taskId, status: "Completed" })
+        });
+
+        const res = await response.json();
+        if (res.success) {
+            loadMyTasks(); // Reloads interface cleanly
+        } else {
+            alert("Update failed: " + (res.error || res.message));
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Server error while completing task.");
+    }
+}
         async function changeStatus(taskId, selectElement) {
             const newStatus = selectElement.value;
             if (newStatus === "Completed") {
@@ -393,13 +405,7 @@
             updateStatusAPI(taskId, newStatus);
         }
 
-        async function markAsCompletedDirect(taskId) {
-            const confirmChange = confirm("Are you sure you want to mark this task as Completed? ✔️");
-            if (confirmChange) {
-                updateStatusAPI(taskId, "Completed");
-            }
-        }
-
+    
         async function updateStatusAPI(taskId, status) {
             try {
                 const response = await fetch("/api/update_task_status", {

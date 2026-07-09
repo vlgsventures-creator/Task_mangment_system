@@ -574,51 +574,81 @@ def update_task_status_post():
 
 # -------------------------------------------------------------
 # Reschedule Handlers (Direct Self Reschedule - No Approval)
-# -------------------------------------------------------------@app.route("/api/request_reschedule", methods=["POST"])
+# -------------------------------------------------------------
+# 1. Direct Self-Reschedule API (No Failed Updates)
+@app.route("/api/request_reschedule", methods=["POST"])
 def request_reschedule():
     try:
         data = request.get_json() or {}
         task_id = data.get("task_id")
         employee_id = data.get("employee_id")
         proposed_deadline = data.get("proposed_deadline")
-        reason = data.get("reason", "")
+        reason = data.get("reason", "Rescheduled by user")
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # 1. Pehle current deadline (purani deadline) fetch karein
+        # Pehle purani deadline nikalo
         cur.execute("SELECT deadline FROM tasks WHERE id = %s", (task_id,))
-        task_data = cur.fetchone()
-        old_deadline = task_data[0] if task_data else None
+        task_row = cur.fetchone()
+        old_deadline = task_row[0] if task_row else None
 
-        # 2. Reschedule Request Log karein (purani aur nayi deadline dono save karein)
+        # 1. Reschedule Log Entry
         cur.execute("""
             INSERT INTO reschedule_requests (task_id, employee_id, old_deadline, proposed_deadline, reason, status)
             VALUES (%s, %s, %s, %s, %s, 'Approved')
         """, (task_id, employee_id, old_deadline, proposed_deadline, reason))
 
-        # 3. Direct Task Deadline Update karein + Status Pending set karein
+        # 2. Update Main Task: New Deadline + Status Back to Pending
         cur.execute("""
             UPDATE tasks 
             SET deadline = %s, status = 'Pending', is_rescheduled = TRUE 
             WHERE id = %s
         """, (proposed_deadline, task_id))
-        
+
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({"success": True, "message": "Task deadline rescheduled successfully!"})
+        return jsonify({"success": True, "message": "Deadline updated successfully!"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# 2. Robust Status Update API (Fixes Mark Complete Failure)
+@app.route("/api/update_task_status", methods=["POST"])
+def update_task_status_post():
+    try:
+        data = request.get_json() or {}
+        task_id = data.get("id") or data.get("task_id")
+        status = data.get("status")
+
+        if not task_id or not status:
+            return jsonify({"success": False, "error": "Missing task_id or status"}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        if status == "Completed":
+            cur.execute("UPDATE tasks SET status = 'Completed', completed_at = CURRENT_TIMESTAMP WHERE id = %s", (task_id,))
+        else:
+            cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (status, task_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Status updated!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# 3. Rescheduled Tasks View API (Shows Old, Proposed & Live Status)
 @app.route("/api/rescheduled_tasks", methods=["GET"])
 def get_rescheduled_tasks():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        # HTML Frontend keys ke according exact structure return hoga
         cur.execute("""
             SELECT 
                 r.id AS request_id,
@@ -650,6 +680,7 @@ def get_rescheduled_tasks():
         } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 # -------------------------------------------------------------
 # Notifications & Dashboard Stats
 # -------------------------------------------------------------
