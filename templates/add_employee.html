@@ -109,11 +109,6 @@ font-weight:500;
 </div>
 
 <div class="inputBox">
-<label>Email</label>
-<input type="email" id="email">
-</div>
-
-<div class="inputBox">
 <label>Password</label>
 <input type="password" id="password">
 </div>
@@ -146,7 +141,6 @@ Add Employee
 function addEmployee(){
 
 let name = document.getElementById("name").value.trim();
-let email = document.getElementById("email").value.trim();
 let password = document.getElementById("password").value.trim();
 let team = document.getElementById("team").value.trim();
 let dob = document.getElementById("dob").value;
@@ -167,7 +161,6 @@ fetch("/add_employee", {
     },
     body: JSON.stringify({
         name: name,
-        email: email,
         password: password,
         team: team,
         dob: dob,
@@ -181,7 +174,6 @@ fetch("/add_employee", {
 
     // Clear input fields
     document.getElementById("name").value = "";
-    document.getElementById("email").value = "";
     document.getElementById("password").value = "";
     document.getElementById("team").value = "";
     document.getElementById("dob").value = "";
