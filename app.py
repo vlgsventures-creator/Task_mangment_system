@@ -63,7 +63,6 @@ def init_db():
             );
         """)
 
-        # Columns Auto-Repair check
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100);")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS team VARCHAR(50);")
         cur.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS dob DATE;")
@@ -79,12 +78,14 @@ def init_db():
                 assigned_to INT REFERENCES employees(id) ON DELETE CASCADE,
                 deadline TIMESTAMP,
                 status VARCHAR(50) DEFAULT 'Pending',
+                is_rescheduled BOOLEAN DEFAULT FALSE,
                 completed_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_rescheduled BOOLEAN DEFAULT FALSE;")
 
-        # 4. Reschedule Requests Table
+        # 4. Reschedule Requests / History Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS reschedule_requests (
                 id SERIAL PRIMARY KEY,
@@ -92,7 +93,7 @@ def init_db():
                 employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
                 proposed_deadline TIMESTAMP,
                 reason TEXT,
-                status VARCHAR(50) DEFAULT 'Pending',
+                status VARCHAR(50) DEFAULT 'Approved',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -210,7 +211,6 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
     except Exception as e:
         print(f"Notification DB Insert Error: {e}")
 
-    # --- ONESIGNAL PUSH NOTIFICATION ---
     ONESIGNAL_APP_ID = "bf1e7c43-6bd2-4b2e-8a3f-87c686f7482a"
     ONESIGNAL_API_KEY = "os_v2_app_x4phyq3l2jfs5cr7q7din52ifl5cweowzpsenjngvur6jpti65i4lkn4zori7bt3fzia7xzncbkrffjf5k65jb54xtepkvl6r4n432a"
 
@@ -221,17 +221,18 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
 
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "included_segments": ["Subscribed Users", "All Users"],  # Active subscribers ko target karega
+        "included_segments": ["Subscribed Users", "All Users"],
         "contents": {"en": message},
         "headings": {"en": title},
-        "url": "https://vlgs-workspace.onrender.com/user_task"  # Complete HTTPS URL
+        "url": "https://vlgs-workspace.onrender.com/user_task"
     }
 
     try:
         res = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
-        print("OneSignal Response:", res.status_code, res.text)  # Debug logs for Render console
+        print("OneSignal Response:", res.status_code, res.text)
     except Exception as err:
         print("OneSignal Error:", err)
+
 # -------------------------------------------------------------
 # Authentication APIs
 # -------------------------------------------------------------
@@ -327,7 +328,7 @@ def get_session_logs():
         return jsonify({"error": str(e)}), 500
 
 # -------------------------------------------------------------
-# Employee Operations (ADD / FETCH / PROFILE)
+# Employee Operations
 # -------------------------------------------------------------
 @app.route('/add_employee', methods=['POST'])
 @app.route('/api/add_employee', methods=['POST'])
@@ -360,7 +361,6 @@ def add_employee():
 
         return jsonify({"status": "success", "message": "Employee Added Successfully", "id": new_id})
     except Exception as e:
-        print("❌ Error in add_employee:", str(e))
         return jsonify({"status": "error", "error": str(e)}), 500
 
 @app.route("/api/employees", methods=["GET"])
@@ -402,7 +402,6 @@ def upload_avatar(employee_id):
 
         return jsonify({"success": True, "message": "Profile picture updated successfully"})
     except Exception as e:
-        print("❌ Upload Avatar Error:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/employee_profile/<int:employee_id>", methods=["GET"])
@@ -466,7 +465,8 @@ def get_all_task_records():
                 t.description, 
                 t.deadline, 
                 t.status, 
-                t.created_at
+                t.created_at,
+                t.is_rescheduled
             FROM tasks t
             LEFT JOIN employees e ON t.assigned_to = e.id
             ORDER BY t.id DESC
@@ -482,10 +482,10 @@ def get_all_task_records():
             "description": row[3],
             "deadline": str(row[4]) if row[4] else "",
             "status": row[5],
-            "created_at": str(row[6]) if row[6] else ""
+            "created_at": str(row[6]) if row[6] else "",
+            "is_rescheduled": row[7]
         } for row in rows])
     except Exception as e:
-        print("❌ Task Records API Error:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/add_task", methods=["POST"])
@@ -500,8 +500,8 @@ def add_task():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO tasks (title, description, assigned_to, deadline)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO tasks (title, description, assigned_to, deadline, is_rescheduled)
+            VALUES (%s, %s, %s, %s, FALSE)
         """, (title, description, assigned_to, deadline))
 
         conn.commit()
@@ -522,10 +522,8 @@ def employee_tasks(employee_id):
         
         cur.execute("""
             SELECT 
-                t.id, t.title, t.description, t.deadline, t.status, t.created_at,
-                CASE WHEN r.id IS NOT NULL THEN TRUE ELSE FALSE END AS reschedule_requested
+                t.id, t.title, t.description, t.deadline, t.status, t.created_at, t.is_rescheduled
             FROM tasks t
-            LEFT JOIN reschedule_requests r ON t.id = r.task_id AND r.status = 'Pending'
             WHERE t.assigned_to = %s
             ORDER BY t.id DESC
         """, (employee_id,))
@@ -540,7 +538,7 @@ def employee_tasks(employee_id):
             "deadline": str(row[3]),
             "status": row[4],
             "created_at": str(row[5]) if row[5] else "N/A",
-            "reschedule_requested": row[6]
+            "is_rescheduled": row[6]
         } for row in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -549,8 +547,8 @@ def employee_tasks(employee_id):
 def update_task_status_post():
     try:
         data = request.get_json() or {}
-        task_id = data["id"]
-        status = data["status"]
+        task_id = data.get("id") or data.get("task_id")
+        status = data.get("status")
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -569,9 +567,88 @@ def update_task_status_post():
         if task_info:
             create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
 
-        return jsonify({"success": True})
+        return jsonify({"success": True, "message": "Status updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+# -------------------------------------------------------------
+# Reschedule Handlers (Direct Self Reschedule - No Approval)
+# -------------------------------------------------------------
+@app.route("/api/request_reschedule", methods=["POST"])
+def request_reschedule():
+    try:
+        data = request.get_json() or {}
+        task_id = data.get("task_id")
+        employee_id = data.get("employee_id")
+        proposed_deadline = data.get("proposed_deadline")
+        reason = data.get("reason", "")
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # 1. Direct Task Deadline Update + Mark Rescheduled + Reset Status to Pending
+        cur.execute("""
+            UPDATE tasks 
+            SET deadline = %s, status = 'Pending', is_rescheduled = TRUE 
+            WHERE id = %s
+        """, (proposed_deadline, task_id))
+        
+        # 2. Reschedule History Log
+        cur.execute("""
+            INSERT INTO reschedule_requests (task_id, employee_id, proposed_deadline, reason, status)
+            VALUES (%s, %s, %s, %s, 'Approved')
+        """, (task_id, employee_id, proposed_deadline, reason))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Task deadline rescheduled successfully!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/rescheduled_tasks", methods=["GET"])
+def get_rescheduled_tasks():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Direct query from tasks table where is_rescheduled = TRUE
+        cur.execute("""
+            SELECT 
+                t.id, 
+                COALESCE(e.name, 'Unassigned') AS employee_name, 
+                t.title, 
+                t.description, 
+                t.deadline, 
+                t.status, 
+                t.created_at,
+                r.reason
+            FROM tasks t
+            LEFT JOIN employees e ON t.assigned_to = e.id
+            LEFT JOIN (
+                SELECT DISTINCT ON (task_id) task_id, reason 
+                FROM reschedule_requests 
+                ORDER BY task_id, id DESC
+            ) r ON t.id = r.task_id
+            WHERE t.is_rescheduled = TRUE
+            ORDER BY t.id DESC
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        return jsonify([{
+            "id": row[0],
+            "employee": row[1],
+            "title": row[2],
+            "description": row[3],
+            "deadline": str(row[4]) if row[4] else "",
+            "status": row[5],  # Ab agar ye Complete ho jayega to yahan 'Completed' hi dikhai dega!
+            "created_at": str(row[6]) if row[6] else "",
+            "reason": row[7] if row[7] else "N/A"
+        } for row in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # -------------------------------------------------------------
 # Notifications & Dashboard Stats
@@ -690,68 +767,6 @@ def update_overdue_tasks():
         conn.close()
     except Exception as e:
         print("Error updating overdue tasks:", e)
-
-# -------------------------------------------------------------
-# Reschedule Requests Handlers
-# -------------------------------------------------------------
-@app.route("/api/request_reschedule", methods=["POST"])
-def request_reschedule():
-    try:
-        data = request.get_json() or {}
-        task_id = data.get("task_id")
-        employee_id = data.get("employee_id")
-        proposed_deadline = data.get("proposed_deadline")
-        reason = data.get("reason")
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO reschedule_requests (task_id, employee_id, proposed_deadline, reason, status)
-            VALUES (%s, %s, %s, %s, 'Pending')
-        """, (task_id, employee_id, proposed_deadline, reason))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({"success": True, "message": "Reschedule request submitted successfully"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-    
-@app.route("/api/admin/action_reschedule", methods=["POST"])
-def action_reschedule():
-    try:
-        data = request.get_json() or {}
-        request_id = data.get("request_id")
-        action = data.get("action")
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT task_id, employee_id, proposed_deadline FROM reschedule_requests WHERE id = %s", (request_id,))
-        req_data = cur.fetchone()
-
-        if not req_data:
-            cur.close()
-            conn.close()
-            return jsonify({"success": False, "message": "Request not found"}), 404
-
-        task_id, emp_id, new_deadline = req_data[0], req_data[1], req_data[2]
-
-        if action == 'approve':
-            cur.execute("UPDATE reschedule_requests SET status = 'Approved' WHERE id = %s", (request_id,))
-            cur.execute("UPDATE tasks SET deadline = %s, status = 'Pending' WHERE id = %s", (new_deadline, task_id))
-            create_notification(emp_id, "✅ Reschedule Approved", "Request approved by Admin!", "Assigned")
-
-        elif action == 'reject':
-            cur.execute("UPDATE reschedule_requests SET status = 'Rejected' WHERE id = %s", (request_id,))
-            create_notification(emp_id, "❌ Reschedule Rejected", "Request rejected by Admin.", "Overdue")
-
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"success": True, "message": f"Request {action}d successfully!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 # -------------------------------------------------------------
 # Auto-Cleanup Tasks (Older than 2 Weeks)
