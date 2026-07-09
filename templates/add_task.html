@@ -329,7 +329,7 @@ required>
 
 const employeeDropdown=document.getElementById("employee");
 
-fetch("http://127.0.0.1:5000/api/employees")
+fetch("/api/employees")
 
 .then(res=>res.json())
 
@@ -375,7 +375,7 @@ deadline:document.getElementById("deadline").value
 
 };
 
-const res=await fetch("http://127.0.0.1:5000/api/add_task",{
+const res=await fetch("/api/add_task",{
 
 method:"POST",
 
