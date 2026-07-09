@@ -190,13 +190,18 @@ def user_task_page():
 def user_alert_page():
     return render_template("user_alert.html")
 
+# -------------------------------------------------------------
+# 🛠️ DYNAMIC SERVICE WORKER ENGINE (Foolproof Notification Delivery)
+# -------------------------------------------------------------
 @app.route('/OneSignalSDKWorker.js')
 def onesignal_worker():
-    return app.send_static_file('OneSignalSDKWorker.js')
-
-@app.route('/rescheduled_tasks_page')
-def rescheduled_tasks_page():
-    return render_template('rescheduled_tasks.html')
+    """Dynamically serves the Service Worker script directly with correct mime type."""
+    response = app.response_class(
+        response='importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");',
+        status=200,
+        mimetype='application/javascript'
+    )
+    return response
 
 # -------------------------------------------------------------
 # Push Notification Helper
@@ -223,9 +228,10 @@ def create_notification(employee_id, title, message, notif_type="Assigned"):
         "Authorization": f"Basic {ONESIGNAL_API_KEY}"
     }
 
+    # Clean segment targets for flawless web standard alerts
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "included_segments": ["Subscribed Users", "All Users"],
+        "included_segments": ["Subscribed Users"],
         "contents": {"en": message},
         "headings": {"en": title},
         "url": "https://vlgs-workspace.onrender.com/user_task"
@@ -547,8 +553,39 @@ def employee_tasks(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/update_task_status", methods=["POST"])
+def update_task_status_post():
+    try:
+        data = request.get_json() or {}
+        task_id = data.get("id") or data.get("task_id")
+        status = data.get("status")
+
+        if not task_id or not status:
+            return jsonify({"success": False, "error": "Missing task_id or status"}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT assigned_to, title FROM tasks WHERE id=%s", (task_id,))
+        task_info = cur.fetchone()
+
+        if status == "Completed":
+            cur.execute("UPDATE tasks SET status = 'Completed', completed_at = CURRENT_TIMESTAMP WHERE id = %s", (task_id,))
+        else:
+            cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (status, task_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        if task_info:
+            create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
+
+        return jsonify({"success": True, "message": "Status updated successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # -------------------------------------------------------------
-# Direct Self-Reschedule & Complete APIs (Unified, No Duplicates)
+# Reschedule Handlers (Direct Self Reschedule - No Approval)
 # -------------------------------------------------------------
 @app.route("/api/request_reschedule", methods=["POST"])
 def request_reschedule():
@@ -585,37 +622,6 @@ def request_reschedule():
         conn.close()
 
         return jsonify({"success": True, "message": "Deadline updated successfully!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route("/api/update_task_status", methods=["POST"])
-def update_task_status_post():
-    try:
-        data = request.get_json() or {}
-        task_id = data.get("id") or data.get("task_id")
-        status = data.get("status")
-
-        if not task_id or not status:
-            return jsonify({"success": False, "error": "Missing task_id or status"}), 400
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT assigned_to, title FROM tasks WHERE id=%s", (task_id,))
-        task_info = cur.fetchone()
-
-        if status == "Completed":
-            cur.execute("UPDATE tasks SET status = 'Completed', completed_at = CURRENT_TIMESTAMP WHERE id = %s", (task_id,))
-        else:
-            cur.execute("UPDATE tasks SET status = %s WHERE id = %s", (status, task_id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        if task_info:
-            create_notification(task_info[0], f"Task Status: {status}", f"Task '{task_info[1]}' updated to {status}.", "Completed" if status == "Completed" else "Assigned")
-
-        return jsonify({"success": True, "message": "Status updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
