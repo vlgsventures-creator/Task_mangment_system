@@ -315,7 +315,7 @@
 
     <script>
         // Extract Session Scope Identity
-        const employeeId = localStorage.getItem("employee_id");
+        const employeeId = sessionStorage.getItem("employee_id");
 
         if (!employeeId) {
             alert("No secure user token detected. Redirecting to gateway.");
