@@ -6,7 +6,6 @@ from datetime import datetime
 import requests
 import json
 import os
-import pytz
 
 app = Flask(__name__)
 CORS(app)
@@ -197,6 +196,7 @@ def rescheduled_tasks_page():
 
 @app.route("/user_personal_tasks")
 def user_personal_tasks():
+    """Renders Employee Personal Task Management Screen"""
     return render_template("user_personal_tasks.html")
 
 @app.route("/admin_personal_tasks")
@@ -344,7 +344,6 @@ def login():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Admin Authenticatiom Check
         cur.execute("SELECT id, username FROM admins WHERE LOWER(username)=LOWER(%s) AND password=%s", (username, password))
         admin_user = cur.fetchone()
 
@@ -353,7 +352,6 @@ def login():
             conn.close()
             return jsonify({"success": True, "role": "admin", "name": admin_user[1], "id": admin_user[0]})
 
-        # Employee Authentication Check
         cur.execute("SELECT id, name FROM employees WHERE LOWER(name)=LOWER(%s) AND password=%s", (username, password))
         employee_user = cur.fetchone()
 
@@ -361,18 +359,7 @@ def login():
             emp_id, emp_name = employee_user[0], employee_user[1]
             ip_addr = request.remote_addr
 
-            # Strictly convert server runtime initialization to Indian Standard Time (IST)
-            IST = pytz.timezone('Asia/Kolkata')
-            login_time = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
-
-            # FIXED: Corrected table structure to session_logs and variables from emp to emp_id/emp_name
-            # Added RETURNING id to correctly fetch session_id string mapping
-            cur.execute("""
-                INSERT INTO session_logs (employee_id, employee_name, login_time, logout_time, ip_address)
-                VALUES (%s, %s, %s, 'Active Session', %s)
-                RETURNING id
-            """, (emp_id, emp_name, login_time, ip_addr))
-            
+            cur.execute("INSERT INTO employee_sessions (employee_id, login_time, ip_address) VALUES (%s, CURRENT_TIMESTAMP, %s) RETURNING id", (emp_id, ip_addr))
             session_id = cur.fetchone()[0]
             conn.commit()
             cur.close()
@@ -385,10 +372,7 @@ def login():
         conn.close()
         return jsonify({"success": False, "message": "Invalid Username or Password"}), 401
     except Exception as e:
-        if 'conn' in locals() and conn:
-            conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
@@ -401,17 +385,10 @@ def logout():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        # FIXED: Consolidated table structure to read from unified 'session_logs' instead of employee_sessions
-        cur.execute("SELECT employee_id, employee_name FROM session_logs WHERE id = %s", (session_id,))
+        cur.execute("SELECT e.id, e.name FROM employee_sessions s JOIN employees e ON s.employee_id = e.id WHERE s.id = %s", (session_id,))
         emp_data = cur.fetchone()
         
-        # Capture current explicit dynamic execution timestamp in IST
-        IST = pytz.timezone('Asia/Kolkata')
-        logout_time = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
-        
-        # FIXED: Forces localized updated timestamp string execution injection instead of default server runtime CURRENT_TIMESTAMP
-        cur.execute("UPDATE session_logs SET logout_time = %s WHERE id = %s AND (logout_time = 'Active Session' OR logout_time IS NULL)", (logout_time, session_id))
+        cur.execute("UPDATE employee_sessions SET logout_time = CURRENT_TIMESTAMP WHERE id = %s AND logout_time IS NULL", (session_id,))
         conn.commit()
         cur.close()
         conn.close()
@@ -421,22 +398,18 @@ def logout():
 
         return jsonify({"success": True, "message": "Logged out successfully"})
     except Exception as e:
-        if 'conn' in locals() and conn:
-            conn.close()
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @app.route("/api/session_logs", methods=["GET"])
 def get_session_logs():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        # FIXED: Pulled records from matched structural relational tracking unit 'session_logs' table
         cur.execute("""
-            SELECT id, employee_name, login_time, logout_time, ip_address
-            FROM session_logs
-            ORDER BY login_time DESC
+            SELECT s.id, e.name, s.login_time, s.logout_time, s.ip_address
+            FROM employee_sessions s
+            JOIN employees e ON s.employee_id = e.id
+            ORDER BY s.login_time DESC
         """)
         rows = cur.fetchall()
         cur.close()
@@ -450,9 +423,8 @@ def get_session_logs():
             "ip_address": row[4] if row[4] else "N/A"
         } for row in rows])
     except Exception as e:
-        if 'conn' in locals() and conn:
-            conn.close()
         return jsonify({"error": str(e)}), 500
+
 # -------------------------------------------------------------
 # Employee Operations
 # -------------------------------------------------------------
