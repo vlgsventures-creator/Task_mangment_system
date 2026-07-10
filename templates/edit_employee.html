@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Employees - VLGS Admin</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #f5f7fb;
+            color: #222;
+            padding-bottom: 90px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 15px 24px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.04);
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .back-btn {
+            background: #f2f4f7;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: #4a5568;
+            transition: 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #e4e7ec;
+        }
+
+        .container {
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media(max-width: 768px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 5px 18px rgba(0,0,0,.04);
+            border: 1px solid #eaeaea;
+        }
+
+        .panel h3 {
+            margin-bottom: 20px;
+            color: #2d2d2d;
+            font-weight: 600;
+            border-bottom: 2px solid #f0f4fe;
+            padding-bottom: 10px;
+        }
+
+        /* Employee List Pane */
+        .emp-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .emp-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .emp-item:hover, .emp-item.selected {
+            border-color: #6C63FF;
+            background: #f4f3ff;
+            transform: translateX(3px);
+        }
+
+        .emp-meta-id {
+            background: #6C63FF;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        .emp-info h5 {
+            font-size: 15px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .emp-info p {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .team-badge {
+            font-size: 11px;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #fff;
+        }
+
+        .form-control:focus {
+            border-color: #6C63FF;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+        }
+
+        .form-control[readonly] {
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-update {
+            background: #6C63FF;
+            color: #fff;
+        }
+
+        .btn-update:hover {
+            background: #564ee8;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+
+        .no-selection {
+            text-align: center;
+            color: #64748b;
+            padding: 60px 20px;
+            font-size: 14px;
+        }
+
+        /* BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,.05);
+            z-index: 999;
+        }
+
+        .nav-btn {
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            cursor: pointer;
+            flex: 1;
+            transition: .3s;
+            text-decoration: none;
+        }
+
+        .nav-btn i {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .nav-btn span {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .nav-btn.active {
+            color: #6C63FF;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <button class="back-btn" onclick="window.location.href='/admin'"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2>Edit / Manage Employees</h2>
+    </header>
+
+    <div class="container">
+        <div class="layout-grid">
+            
+            <div class="panel">
+                <h3>Select Employee File</h3>
+                <div class="emp-list" id="employeeList">
+                    <p style="text-align: center; color: #64748b;">Loading active records...</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Operational Blueprint</h3>
+                <div id="formPlaceholder" class="no-selection">
+                    <i class="fa-solid fa-user-gear" style="font-size: 44px; margin-bottom: 12px; color: #cbd5e1;"></i>
+                    <p>Select an employee from the panel to process runtime mutations or full deletion.</p>
+                </div>
+
+                <form id="editForm" style="display: none;" onsubmit="handleUpdate(event)">
+                    
+                    <div class="form-group">
+                        <label>Employee ID (System Generated)</label>
+                        <input type="text" id="editEmpIdDisplay" class="form-control" readonly>
+                        <input type="hidden" id="editEmpId">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editName">Full Name</label>
+                        <input type="text" id="editName" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editEmail">Email Address</label>
+                        <input type="email" id="editEmail" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editPassword">Password (Leave blank to keep unchanged)</label>
+                        <input type="password" id="editPassword" class="form-control" placeholder="••••••••">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editTeam">Team Assignment</label>
+                        <input type="text" id="editTeam" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editDob">Date of Birth</label>
+                        <input type="date" id="editDob" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editJoining">Joining Date</label>
+                        <input type="date" id="editJoining" class="form-control">
+                    </div>
+
+                    <div class="btn-container">
+                        <button type="button" class="btn btn-delete" onclick="handleDelete()">
+                            <i class="fa-solid fa-trash-can"></i> Delete Employee
+                        </button>
+                        <button type="submit" class="btn btn-update">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Update Record
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-btn" onclick="window.location.href='/add_employee'">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Add Employee</span>
+        </button>
+        <button class="nav-btn active" onclick="window.location.href='/edit_employee_page'">
+            <i class="fa-solid fa-user-gear"></i>
+            <span>Manage Emp</span>
+        </button>
+        <button class="nav-btn" onclick="window.location.href='/add-task'">
+            <i class="fa-solid fa-plus"></i>
+            <span>Assign Task</span>
+        </button>
+        <button class="nav-btn" onclick="window.location.href='/task-records'">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Task Records</span>
+        </button>
+    </div>
+
+    <script>
+        let allEmployees = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            fetchEmployees();
+        });
+
+        // 1. Fetch Master List
+        async function fetchEmployees() {
+            try {
+                const res = await fetch("/api/employees");
+                allEmployees = await res.json();
+                renderEmployeeList();
+            } catch (err) {
+                console.error("Master system poll failed:", err);
+                document.getElementById("employeeList").innerHTML = `<p style="color:red; text-align:center;">Failed to pool records.</p>`;
+            }
+        }
+
+        // 2. Render Left Pane UI
+        function renderEmployeeList() {
+            const listContainer = document.getElementById("employeeList");
+            if(allEmployees.length === 0) {
+                listContainer.innerHTML = `<p style="text-align: center; color: #64748b;">No employee entities discovered.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = allEmployees.map(emp => `
+                <div class="emp-item" id="emp-item-${emp.id}" onclick="selectEmployee(${emp.id})">
+                    <div class="emp-info">
+                        <span class="emp-meta-id">EMP CODE: EMP-2026${String(emp.id).padStart(2, '0')}</span>
+                        <h5>${emp.name}</h5>
+                        <p>${emp.email}</p>
+                    </div>
+                    <span class="team-badge">${emp.team || 'General'}</span>
+                </div>
+            `).join('');
+        }
+
+        // 3. Select node and auto-populate values inside form
+        async function selectEmployee(id) {
+            document.querySelectorAll(".emp-item").forEach(el => el.classList.remove("selected"));
+            
+            const activeNode = document.getElementById(`emp-item-${id}`);
+            if(activeNode) activeNode.classList.add("selected");
+
+            try {
+                const res = await fetch(`/api/employee_profile/${id}`);
+                const data = await res.json();
+                
+                if(data.success) {
+                    const profile = data.profile;
+                    
+                    document.getElementById("formPlaceholder").style.display = "none";
+                    document.getElementById("editForm").style.display = "block";
+
+                    // Map values accurately including functional displays
+                    document.getElementById("editEmpId").value = id;
+                    document.getElementById("editEmpIdDisplay").value = profile.emp_code; // Display code like EMP-202601
+                    document.getElementById("editName").value = profile.name;
+                    document.getElementById("editEmail").value = profile.email;
+                    document.getElementById("editPassword").value = ""; // Safety default
+                    document.getElementById("editTeam").value = profile.team === "Assign Team" ? "" : profile.team;
+                    document.getElementById("editDob").value = profile.dob || "";
+                    document.getElementById("editJoining").value = profile.joining_date || "";
+                }
+            } catch(err) {
+                alert("Error compilation within execution stream.");
+            }
+        }
+
+        // 4. Update Database Stream
+        async function handleUpdate(e) {
+            e.preventDefault();
+            const id = document.getElementById("editEmpId").value;
+            
+            const payload = {
+                name: document.getElementById("editName").value.trim(),
+                email: document.getElementById("editEmail").value.trim(),
+                password: document.getElementById("editPassword").value,
+                team: document.getElementById("editTeam").value.trim() || "General",
+                dob: document.getElementById("editDob").value,
+                joining_date: document.getElementById("editJoining").value
+            };
+
+            try {
+                const res = await fetch(`/api/employees/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if(result.status === "success") {
+                    alert(result.message);
+                    fetchEmployees(); // Synchronize view state
+                    resetForm();
+                } else {
+                    alert("Error: " + result.message);
+                }
+            } catch (err) {
+                alert("Critical network anomaly during update broadcast.");
+            }
+        }
+
+        // 5. Delete Execution Unit
+        async function handleDelete() {
+            const id = document.getElementById("editEmpId").value;
+            const codeName = document.getElementById("editEmpIdDisplay").value;
+            const name = document.getElementById("editName").value;
+
+            if(confirm(`🚨 CRITICAL ACTION: Are you absolutely sure you want to delete ${name} (${codeName})? This will permanently flush all related schedules and data structures!`)) {
+                try {
+                    const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+                    const result = await res.json();
+
+                    if(result.status === "success") {
+                        alert(result.message);
+                        fetchEmployees();
+                        resetForm();
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch(err) {
+                    alert("Fatal error during record termination pipeline.");
+                }
+            }
+        }
+
+        function resetForm() {
+            document.getElementById("editForm").reset();
+            document.getElementById("editForm").style.display = "none";
+            document.getElementById("formPlaceholder").style.display = "block";
+        }
+    </script>
+</body>
+</html>

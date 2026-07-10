@@ -205,8 +205,84 @@ def onesignal_worker():
         mimetype='application/javascript'
     )
     return response
-
 # -------------------------------------------------------------
+# Employee Edit & Delete Routes
+# -------------------------------------------------------------
+# -------------------------------------------------------------
+# Employee Edit, Update & Delete Routes
+# -------------------------------------------------------------
+@app.route("/edit_employee_page")
+def edit_employee_page():
+    """Renders the Employee Management / Edit Page"""
+    return render_template("edit_employee.html")
+
+
+@app.route("/api/employees/<int:employee_id>", methods=["PUT"])
+def update_employee(employee_id):
+    """Updates specific employee details including password and codes"""
+    try:
+        data = request.get_json() or {}
+        name = data.get("name")
+        email = data.get("email")
+        password = data.get("password")
+        team = data.get("team", "General")
+        dob = data.get("dob") if data.get("dob") else None
+        joining_date = data.get("joining_date") if data.get("joining_date") else None
+
+        if not name or not email:
+            return jsonify({"status": "error", "message": "Name and Email are required"}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Agar password input field khali nahi hai to password bhi update hoga
+        if password and password.strip() != "":
+            cur.execute("""
+                UPDATE employees 
+                SET name = %s, email = %s, password = %s, team = %s, dob = %s, joining_date = %s
+                WHERE id = %s
+            """, (name, email, password, team, dob, joining_date, employee_id))
+        else:
+            cur.execute("""
+                UPDATE employees 
+                SET name = %s, email = %s, team = %s, dob = %s, joining_date = %s
+                WHERE id = %s
+            """, (name, email, team, dob, joining_date, employee_id))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "Employee records updated successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/employees/<int:employee_id>", methods=["DELETE"])
+def delete_employee(employee_id):
+    """Deletes an employee from the system entirely"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if employee exists
+        cur.execute("SELECT name FROM employees WHERE id = %s", (employee_id,))
+        emp = cur.fetchone()
+        
+        if not emp:
+            cur.close()
+            conn.close()
+            return jsonify({"status": "error", "message": "Employee not found"}), 404
+            
+        # Deletion logic (FOREIGN KEY cascades will handle task removals seamlessly)
+        cur.execute("DELETE FROM employees WHERE id = %s", (employee_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"status": "success", "message": f"Employee '{emp[0]}' has been deleted successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500# -------------------------------------------------------------
 # Push Notification Helper
 # -------------------------------------------------------------
 def create_notification(employee_id, title, message, notif_type="Assigned"):
