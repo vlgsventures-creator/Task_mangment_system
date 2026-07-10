@@ -371,7 +371,15 @@
         document.addEventListener("DOMContentLoaded", function () {
             loadDashboard();
             updateDate();
+            
+            // Pehli baar load hone par fetch karega
             fetchAdminNotificationCount();
+            
+            // HAR 10 SECONDS ME AUTOMATIC LIVE CHECK KAREGA (Bina page reload kiye)
+            setInterval(fetchAdminNotificationCount, 10000);
+            
+            // Dashboard counts ko bhi har 30 seconds me background me update rakhega
+            setInterval(loadDashboard, 30000);
         });
 
         // Load Counts Data
@@ -399,7 +407,33 @@
             document.getElementById("todayDate").innerText = `${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]} ${now.getFullYear()}`;
         }
 
-        // Fetch Live Notification Count From Back-end
+        // 1. SOUND GENERATION UTILITY ENGINE (Bina kisi extra audio file ke wave play karega)
+        function playNotificationSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Chime Note 1
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // Chime Note 2
+                
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); // Volume Level
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.4);
+            } catch (e) {
+                console.log("Audio Context system fallback:", e);
+            }
+        }
+
+        // 2. FIXED REAL-TIME FETCH WITH BOUNDING SOUND TRIGGER
+        let lastLoggedCount = 0; // Tracks baseline notification count
+
         async function fetchAdminNotificationCount() {
             try {
                 const response = await fetch("/api/admin_notification_count");
@@ -409,8 +443,15 @@
                 if (data.count && data.count > 0) {
                     badge.innerText = data.count;
                     badge.style.display = "flex";
+
+                    // AGAR NAYA NOTIFICATION AAYA (COUNT INCREASE HUA): TOH SOUND BAJEGA!
+                    if (data.count > lastLoggedCount && lastLoggedCount !== 0) {
+                        playNotificationSound();
+                    }
+                    lastLoggedCount = data.count; // State update mapping
                 } else {
                     badge.style.display = "none";
+                    lastLoggedCount = 0;
                 }
             } catch (error) {
                 console.error("Error fetching notification count:", error);
