@@ -374,11 +374,52 @@ box-shadow: 0 8px 20px rgba(255, 118, 117, 0.4);
     object-fit: contain;
     border-radius: 8px; 
 }
+
+/* --- PREMIUM BIRTHDAY POPUP STYLES --- */
+        .birthday-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 99999;
+        }
+        .birthday-card {
+            background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            padding: 40px 30px; border-radius: 24px; text-align: center;
+            box-shadow: 0 20px 50px rgba(255, 117, 140, 0.4);
+            max-width: 450px; width: 90%; color: white;
+            position: relative; animation: popScale 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popScale {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .birthday-card i.fa-cake-candles {
+            font-size: 60px; color: #fff; margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .birthday-card h1 { font-size: 28px; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .birthday-card p { font-size: 15px; opacity: 0.9; margin-bottom: 25px; line-height: 1.5; }
+        .bday-btn {
+            background: white; color: #ff758c; border: none; padding: 12px 35px;
+            border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: 0.3s;
+        }
+        .bday-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
 </style>
 </head>
 
 <body>
-
+<div class="birthday-overlay" id="birthdayOverlay">
+        <div class="birthday-card">
+            <i class="fa-solid fa-cake-candles"></i>
+            <h1>Happy Birthday! 🎂</h1>
+            <p>Wishing you a fantastic day filled with joy, success, and happiness. Have a blast ahead from VLGS Team! ❤️</p>
+            <button class="bday-btn" onclick="closeBirthdayModal()">Thank You! ✨</button>
+        </div>
+    </div>
 <div class="header">
     <div class="left">
         <img src="{{ url_for('static', filename='vlgs_logo.png') }}" alt="VLGS Logo" class="header-logo">
@@ -456,6 +497,96 @@ box-shadow: 0 8px 20px rgba(255, 118, 117, 0.4);
 </div>
 
 <script>
+    // BIRTHDAY MODAL CLOSE FUNCTION
+        function closeBirthdayModal() {
+            document.getElementById("birthdayOverlay").style.display = "none";
+        }
+
+        // Updated Dashboard Core Hydration Logic
+        function loadDashboardBlueprints() {
+            fetch(`/api/employee_profile/${employeeId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById("empName").innerText = data.profile.name;
+                        if (data.profile.profile_pic) {
+                            document.getElementById("navAvatar").src = data.profile.profile_pic;
+                        }
+
+                        // --- BIRTHDAY LOGIC ENGINE ---
+                        if (data.profile.dob) {
+                            const today = new Date();
+                            const bdayDate = new Date(data.profile.dob);
+                            
+                            // Aaj ki date aur month ko employee ke dob se compare karein
+                            const isTodayBirthday = (today.getDate() === bdayDate.getDate() && today.getMonth() === bdayDate.getMonth());
+                            
+                            if (isTodayBirthday) {
+                                // Screen block karke Birthday Welcome overlay dikhao
+                                document.getElementById("birthdayOverlay").style.display = "flex";
+                                
+                                // Birthday special chime sound bajao
+                                try {
+                                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                                    const notes = [261.63, 329.63, 392.00, 523.25]; // Beautiful chord C-E-G-C
+                                    notes.forEach((freq, idx) => {
+                                        const osc = audioCtx.createOscillator();
+                                        const gainNode = audioCtx.createGain();
+                                        osc.connect(gainNode);
+                                        gainNode.connect(audioCtx.destination);
+                                        osc.type = 'sine';
+                                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + (idx * 0.1));
+                                        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + (idx * 0.1));
+                                        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (idx * 0.1) + 0.5);
+                                        osc.start(audioCtx.currentTime + (idx * 0.1));
+                                        osc.stop(audioCtx.currentTime + (idx * 0.1) + 0.5);
+                                    });
+                                } catch(e) { console.log(e); }
+                            }
+                        }
+                    }
+                });
+
+            // Baki bacha hua task records fetch logic bilkul purana jaisa same rahega...
+            fetch(`/api/tasks/${employeeId}`)
+                .then(res => res.json())
+                .then(tasks => {
+                    if (!Array.isArray(tasks)) return;
+                    
+                    document.getElementById("totalTasks").innerText = tasks.length;
+                    document.getElementById("pendingTasks").innerText = tasks.filter(t => t.status === "Pending").length;
+                    document.getElementById("completedTasks").innerText = tasks.filter(t => t.status === "Completed").length;
+
+                    const container = document.getElementById("tasksContainer");
+                    container.innerHTML = "";
+
+                    if (tasks.length === 0) {
+                        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No tasks assigned to your terminal yet.</p></div>`;
+                        return;
+                    }
+
+                    tasks.forEach(task => {
+                        let badgeClass = "badge-pending";
+                        if (task.status === "Completed") badgeClass = "badge-completed";
+                        if (task.status === "Overdue") badgeClass = "badge-overdue";
+
+                        const card = document.createElement("div");
+                        card.className = "task-card";
+                        card.innerHTML = `
+                            <div class="task-header">
+                                <span class="task-title">${task.title}</span>
+                                <span class="status-badge ${badgeClass}">${task.status}</span>
+                            </div>
+                            <p class="task-desc">${task.description || 'No description provided.'}</p>
+                            <div class="task-meta">
+                                <span><i class="fa-regular fa-calendar"></i> Due: ${task.due_date || 'N/A'}</span>
+                                ${task.status === 'Pending' ? `<button class="action-btn" onclick="markTaskComplete(${task.id})"><i class="fa-solid fa-check"></i> Complete</button>` : ''}
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                });
+        }
 // Authentication check
 const employeeId = sessionStorage.getItem("employee_id");
 const employeeName = sessionStorage.getItem("employee_name");
