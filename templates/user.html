@@ -495,262 +495,319 @@ box-shadow: 0 8px 20px rgba(255, 118, 117, 0.4);
     <a href="/user_personal_tasks"><i class="fa-solid fa-thumbtack"></i>My Tasks</a>
     <a href="/user_profile"><i class="fa-solid fa-user"></i>Profile</a>
 </div>
-
 <script>
-    // BIRTHDAY MODAL CLOSE FUNCTION
-        function closeBirthdayModal() {
-            document.getElementById("birthdayOverlay").style.display = "none";
-        }
+    // Global Authentication check & tracking indices
+    const employeeId = sessionStorage.getItem("employee_id");
+    const employeeName = sessionStorage.getItem("employee_name");
+    let lastTotalTasksCount = 0; // Tracks baseline for new tasks
 
-        // Updated Dashboard Core Hydration Logic
-        function loadDashboardBlueprints() {
-            fetch(`/api/employee_profile/${employeeId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById("empName").innerText = data.profile.name;
-                        if (data.profile.profile_pic) {
-                            document.getElementById("navAvatar").src = data.profile.profile_pic;
-                        }
-
-                        // --- BIRTHDAY LOGIC ENGINE ---
-                        if (data.profile.dob) {
-                            const today = new Date();
-                            const bdayDate = new Date(data.profile.dob);
-                            
-                            // Aaj ki date aur month ko employee ke dob se compare karein
-                            const isTodayBirthday = (today.getDate() === bdayDate.getDate() && today.getMonth() === bdayDate.getMonth());
-                            
-                            if (isTodayBirthday) {
-                                // Screen block karke Birthday Welcome overlay dikhao
-                                document.getElementById("birthdayOverlay").style.display = "flex";
-                                
-                                // Birthday special chime sound bajao
-                                try {
-                                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                                    const notes = [261.63, 329.63, 392.00, 523.25]; // Beautiful chord C-E-G-C
-                                    notes.forEach((freq, idx) => {
-                                        const osc = audioCtx.createOscillator();
-                                        const gainNode = audioCtx.createGain();
-                                        osc.connect(gainNode);
-                                        gainNode.connect(audioCtx.destination);
-                                        osc.type = 'sine';
-                                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + (idx * 0.1));
-                                        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + (idx * 0.1));
-                                        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (idx * 0.1) + 0.5);
-                                        osc.start(audioCtx.currentTime + (idx * 0.1));
-                                        osc.stop(audioCtx.currentTime + (idx * 0.1) + 0.5);
-                                    });
-                                } catch(e) { console.log(e); }
-                            }
-                        }
-                    }
-                });
-
-            // Baki bacha hua task records fetch logic bilkul purana jaisa same rahega...
-            fetch(`/api/tasks/${employeeId}`)
-                .then(res => res.json())
-                .then(tasks => {
-                    if (!Array.isArray(tasks)) return;
-                    
-                    document.getElementById("totalTasks").innerText = tasks.length;
-                    document.getElementById("pendingTasks").innerText = tasks.filter(t => t.status === "Pending").length;
-                    document.getElementById("completedTasks").innerText = tasks.filter(t => t.status === "Completed").length;
-
-                    const container = document.getElementById("tasksContainer");
-                    container.innerHTML = "";
-
-                    if (tasks.length === 0) {
-                        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No tasks assigned to your terminal yet.</p></div>`;
-                        return;
-                    }
-
-                    tasks.forEach(task => {
-                        let badgeClass = "badge-pending";
-                        if (task.status === "Completed") badgeClass = "badge-completed";
-                        if (task.status === "Overdue") badgeClass = "badge-overdue";
-
-                        const card = document.createElement("div");
-                        card.className = "task-card";
-                        card.innerHTML = `
-                            <div class="task-header">
-                                <span class="task-title">${task.title}</span>
-                                <span class="status-badge ${badgeClass}">${task.status}</span>
-                            </div>
-                            <p class="task-desc">${task.description || 'No description provided.'}</p>
-                            <div class="task-meta">
-                                <span><i class="fa-regular fa-calendar"></i> Due: ${task.due_date || 'N/A'}</span>
-                                ${task.status === 'Pending' ? `<button class="action-btn" onclick="markTaskComplete(${task.id})"><i class="fa-solid fa-check"></i> Complete</button>` : ''}
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    });
-                });
-        }
-// Authentication check
-const employeeId = sessionStorage.getItem("employee_id");
-const employeeName = sessionStorage.getItem("employee_name");
-
-if (!employeeId) {
-    window.location.href = "/";
-} else {
-    document.getElementById("employeeGreeting").innerHTML = `Hello, ${employeeName} 👋`;
-}
-
-// Logout Handler
-document.getElementById("logoutBtn").addEventListener("click", function(){
-    if(confirm("Are you sure you want to logout?")){
-        const sessionId = sessionStorage.getItem("session_id");
-
-        if (sessionId) {
-            fetch('/api/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ session_id: sessionId })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log("Logout tracked successfully:", data);
-                sessionStorage.clear(); 
-                localStorage.clear();
-                window.location.href = "/";
-            })
-            .catch(err => {
-                console.error("Logout API Error:", err);
-                sessionStorage.clear(); 
-                localStorage.clear();
-                window.location.href = "/";
-            });
-        } else {
-            sessionStorage.clear(); 
-            localStorage.clear();
-            window.location.href = "/";
+    if (!employeeId) {
+        window.location.href = "/";
+    } else {
+        const greetingElem = document.getElementById("employeeGreeting");
+        if(greetingElem) {
+            greetingElem.innerHTML = `Hello, ${employeeName} 👋`;
         }
     }
-});
 
-// Setup Live Date
-const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-document.getElementById("date").innerHTML = new Date().toLocaleDateString('en-US', options);
+    // BIRTHDAY MODAL CLOSE FUNCTION
+    function closeBirthdayModal() {
+        document.getElementById("birthdayOverlay").style.display = "none";
+    }
 
-// Load everything initially
-loadDashboardData();
-
-function loadDashboardData() {
-    fetchNotificationCount();
-    fetchAndRenderTasks();
-}
-
-// Fetch Notification Count
-function fetchNotificationCount() {
-    fetch(`/api/notification_count/${employeeId}`)
-    .then(r => r.json())
-    .then(data => {
-        document.getElementById("bellCount").innerHTML = data.count || 0;
-    }).catch(err => console.error("Notification Fetch Error:", err));
-}
-
-// Central Task Engine
-function fetchAndRenderTasks() {
-    fetch(`/api/tasks/${employeeId}`)
-    .then(r => r.json())
-    .then(tasks => {
-        const todayBox = document.getElementById("todayTaskContainer");
-        const overdueBox = document.getElementById("overdueTaskContainer");
-        const historyBox = document.getElementById("historyTaskContainer");
-
-        todayBox.innerHTML = "";
-        overdueBox.innerHTML = "";
-        historyBox.innerHTML = "";
-
-        let total = tasks.length;
-        let pending = 0;
-        let ongoing = 0;
-        let completed = 0;
-
-        const todayStr = new Date().toISOString().split("T")[0];
-
-        tasks.forEach(task => {
-            if(task.status === "Pending") pending++;
-            if(task.status === "Ongoing") ongoing++;
-            if(task.status === "Completed") completed++;
-            if(task.status === "Overdue") pending++; 
-
-            const taskDeadlineDate = task.deadline.split(" ")[0];
-
-            let cls = "pending";
-            if(task.status === "Completed") cls = "complete";
-            else if(task.status === "Ongoing") cls = "progress";
-            else if(task.status === "Overdue") cls = "overdue";
-
-            let actionButtonHtml = "";
-            if (task.status === "Pending") {
-                actionButtonHtml = `<button class="action-btn btn-start" onclick="updateTaskStatus(${task.id}, 'Ongoing')">Start Task</button>`;
-            } else if (task.status === "Ongoing" || task.status === "Overdue") {
-                actionButtonHtml = `<button class="action-btn btn-complete" onclick="updateTaskStatus(${task.id}, 'Completed')">Mark Complete</button>`;
-            }
-
-            const cardHtml = `
-                <div class="task">
-                    <div class="task-info">
-                        <h4>${task.title}</h4>
-                        <small>${task.description || 'No description provided'}</small>
-                        <small class="deadline-text"><i class="fa-regular fa-calendar-days"></i> Deadline: ${taskDeadlineDate}</small>
-                    </div>
-                    <div class="task-actions">
-                        <span class="status ${cls}">${task.status}</span>
-                        ${actionButtonHtml}
-                    </div>
-                </div>
-            `;
-
-            if (task.status === "Completed") {
-                historyBox.innerHTML += cardHtml;
-            } else if (task.status === "Overdue" || taskDeadlineDate < todayStr) {
-                overdueBox.innerHTML += cardHtml;
-            } else {
-                todayBox.innerHTML += cardHtml;
-            }
-        });
-
-        document.getElementById("totalTasks").innerHTML = total;
-        document.getElementById("pendingTasks").innerHTML = pending;
-        document.getElementById("ongoingTasks").innerHTML = ongoing;
-        document.getElementById("completedTasks").innerHTML = completed;
-
-        if(todayBox.innerHTML === "") todayBox.innerHTML = '<div class="task"><h4>No active tasks for today 🎉</h4></div>';
-        if(overdueBox.innerHTML === "") overdueBox.innerHTML = '<div class="task"><h4>No overdue tasks. Awesome!</h4></div>';
-        if(historyBox.innerHTML === "") historyBox.innerHTML = '<div class="task"><h4>No completion history yet.</h4></div>';
-
-    }).catch(err => console.error("Task Engine Error:", err));
-}
-
-function updateTaskStatus(taskId, newStatus) {
-    fetch('/api/update_task_status', {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-            id: taskId,       
-            status: newStatus 
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if(data.success) {
-            loadDashboardData();
-        } else {
-            alert("Failed to update status: " + (data.error || "Unknown error"));
+    // 1. LOUD & LONG SOUND ENGINE FOR NEW TASK ASSIGNED (Runs for approx 3.5 Seconds)
+    function playTaskAssignedSoundLoud() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // Beautiful High Pitch Major Chord Array
+            
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.type = 'triangle'; // Clear and louder wave tone
+                
+                const startTime = audioCtx.currentTime + (index * 0.4);
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                gainNode.gain.setValueAtTime(0.4, startTime); // Louder volume mapping
+                gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 2.0);
+                
+                osc.start(startTime);
+                osc.stop(startTime + 2.2);
+            });
+        } catch (e) {
+            console.log("Audio play model blocked by browser rules:", e);
         }
-    })
-    .catch(err => {
-        console.error("Status Update Failure:", err);
-        alert("Server communication error.");
+    }
+
+    // 2. DANGEROUS EMERGENCY SIREN RING FOR OVERDUE TASKS (Siren Effect)
+    function playDangerousOverdueSiren() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Ek khatarnak double oscillating frequency up-down emergency ring rule
+            for (let i = 0; i < 3; i++) {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.type = 'sawtooth'; // Sabse piercing aur aggressive wave type (Siren effect)
+                
+                const timeOffset = audioCtx.currentTime + (i * 0.8);
+                
+                // Siren continuous frequency sweeping up and down
+                osc.frequency.setValueAtTime(300, timeOffset);
+                osc.frequency.linearRampToValueAtTime(800, timeOffset + 0.3);
+                osc.frequency.linearRampToValueAtTime(300, timeOffset + 0.6);
+                
+                gainNode.gain.setValueAtTime(0.5, timeOffset); // High Danger Volume
+                gainNode.gain.exponentialRampToValueAtTime(0.001, timeOffset + 0.75);
+                
+                osc.start(timeOffset);
+                osc.stop(timeOffset + 0.75);
+            }
+        } catch (e) {
+            console.log("Danger Siren blocked by browser context rules:", e);
+        }
+    }
+
+    // Core Profile & Birthday Hydration Engine
+    function loadDashboardBlueprints() {
+        if (!employeeId) return;
+        
+        fetch(`/api/employee_profile/${employeeId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.profile) {
+                    const empNameElem = document.getElementById("empName");
+                    const navAvatarElem = document.getElementById("navAvatar");
+                    
+                    if(empNameElem) empNameElem.innerText = data.profile.name;
+                    if(navAvatarElem && data.profile.profile_pic) {
+                        navAvatarElem.src = data.profile.profile_pic;
+                    }
+
+                    // --- BIRTHDAY LOGIC ENGINE ---
+                    if (data.profile.dob) {
+                        const today = new Date();
+                        const bdayDate = new Date(data.profile.dob);
+                        const isTodayBirthday = (today.getDate() === bdayDate.getDate() && today.getMonth() === bdayDate.getMonth());
+                        
+                        const overlay = document.getElementById("birthdayOverlay");
+                        if (isTodayBirthday && overlay) {
+                            overlay.style.display = "flex";
+                            
+                            // Birthday special chime sound chords sequence
+                            try {
+                                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                                const notes = [261.63, 329.63, 392.00, 523.25];
+                                notes.forEach((freq, idx) => {
+                                    const osc = audioCtx.createOscillator();
+                                    const gainNode = audioCtx.createGain();
+                                    osc.connect(gainNode);
+                                    gainNode.connect(audioCtx.destination);
+                                    osc.type = 'sine';
+                                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + (idx * 0.1));
+                                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + (idx * 0.1));
+                                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (idx * 0.1) + 0.5);
+                                    osc.start(audioCtx.currentTime + (idx * 0.1));
+                                    osc.stop(audioCtx.currentTime + (idx * 0.1) + 0.5);
+                                });
+                            } catch(e) { console.log(e); }
+                        }
+                    }
+                }
+            }).catch(err => console.error("Profile Engine Blueprint Error:", err));
+    }
+
+    // Central Controller Pipeline
+    function loadDashboardData() {
+        fetchNotificationCount();
+        fetchAndRenderTasks();
+    }
+
+    // Fetch Notification Bell Badge Count
+    function fetchNotificationCount() {
+        if (!employeeId) return;
+        fetch(`/api/notification_count/${employeeId}`)
+        .then(r => r.json())
+        .then(data => {
+            const bell = document.getElementById("bellCount");
+            if(bell) bell.innerHTML = data.count || 0;
+        }).catch(err => console.error("Notification Fetch Error:", err));
+    }
+
+    // FIXED REAL-TIME TASK ENGINE WITH LIVE COUNTS AND SOUND ALERTS TRIGGER
+    function fetchAndRenderTasks() {
+        if (!employeeId) return;
+        
+        fetch(`/api/tasks/${employeeId}`)
+        .then(r => r.json())
+        .then(tasks => {
+            const todayBox = document.getElementById("todayTaskContainer");
+            const overdueBox = document.getElementById("overdueTaskContainer");
+            const historyBox = document.getElementById("historyTaskContainer");
+
+            if(!todayBox || !overdueBox || !historyBox) return;
+
+            todayBox.innerHTML = "";
+            overdueBox.innerHTML = "";
+            historyBox.innerHTML = "";
+
+            let total = tasks.length;
+            let pending = 0;
+            let ongoing = 0;
+            let completed = 0;
+            let dynamicOverdueFound = false; // Tracks if any task is currently overdue
+
+            const todayStr = new Date().toISOString().split("T")[0];
+
+            // UI Counter loops mapping
+            tasks.forEach(task => {
+                if(task.status === "Pending") pending++;
+                if(task.status === "Ongoing") ongoing++;
+                if(task.status === "Completed") completed++;
+                if(task.status === "Overdue") {
+                    pending++; 
+                    dynamicOverdueFound = true; // Mark overdue indicator flag true!
+                }
+
+                const taskDeadlineDate = task.deadline ? task.deadline.split(" ")[0] : todayStr;
+
+                let cls = "pending";
+                if(task.status === "Completed") cls = "complete";
+                else if(task.status === "Ongoing") cls = "progress";
+                else if(task.status === "Overdue") cls = "overdue";
+
+                let actionButtonHtml = "";
+                if (task.status === "Pending") {
+                    actionButtonHtml = `<button class="action-btn btn-start" onclick="updateTaskStatus(${task.id}, 'Ongoing')">Start Task</button>`;
+                } else if (task.status === "Ongoing" || task.status === "Overdue") {
+                    actionButtonHtml = `<button class="action-btn btn-complete" onclick="updateTaskStatus(${task.id}, 'Completed')">Mark Complete</button>`;
+                }
+
+                const cardHtml = `
+                    <div class="task">
+                        <div class="task-info">
+                            <h4>${task.title}</h4>
+                            <small>${task.description || 'No description provided'}</small>
+                            <small class="deadline-text"><i class="fa-regular fa-calendar-days"></i> Deadline: ${taskDeadlineDate}</small>
+                        </div>
+                        <div class="task-actions">
+                            <span class="status ${cls}">${task.status}</span>
+                            ${actionButtonHtml}
+                        </div>
+                    </div>
+                `;
+
+                if (task.status === "Completed") {
+                    historyBox.innerHTML += cardHtml;
+                } else if (task.status === "Overdue" || taskDeadlineDate < todayStr) {
+                    overdueBox.innerHTML += cardHtml;
+                    dynamicOverdueFound = true; // Safety condition match
+                } else {
+                    todayBox.innerHTML += cardHtml;
+                }
+            });
+
+            // --- 🚨 CRITICAL SOUND TRIGGER SEQUENCES 🚨 ---
+            
+            // Condition A: Agar koi task OVERDUE mila -> Toh dangerous siren bajao!
+            if (dynamicOverdueFound) {
+                playDangerousOverdueSiren();
+            } 
+            // Condition B: Agar overdue nahi hai aur NAYA TASK assign hua (count bada) -> Toh long loud sound bajao!
+            else if (lastTotalTasksCount !== 0 && total > lastTotalTasksCount) {
+                playTaskAssignedSoundLoud();
+            }
+
+            // Sync baseline records map pointer
+            lastTotalTasksCount = total;
+
+            // UI Grid Elements Updates
+            document.getElementById("totalTasks").innerHTML = total;
+            document.getElementById("pendingTasks").innerHTML = pending;
+            document.getElementById("ongoingTasks").innerHTML = ongoing;
+            document.getElementById("completedTasks").innerHTML = completed;
+
+            if(todayBox.innerHTML === "") todayBox.innerHTML = '<div class="task"><h4>No active tasks for today 🎉</h4></div>';
+            if(overdueBox.innerHTML === "") overdueBox.innerHTML = '<div class="task"><h4>No overdue tasks. Awesome!</h4></div>';
+            if(historyBox.innerHTML === "") historyBox.innerHTML = '<div class="task"><h4>No completion history yet.</h4></div>';
+
+        }).catch(err => console.error("Task Engine Error Pipeline Stack:", err));
+    }
+
+    // Status Trigger Controller Mapping
+    function updateTaskStatus(taskId, newStatus) {
+        fetch('/api/update_task_status', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ 
+                id: taskId,       
+                status: newStatus 
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                loadDashboardData(); // Fast data sync reload
+            } else {
+                alert("Failed to update status: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            console.error("Status Update Failure:", err);
+            alert("Server communication error.");
+        });
+    }
+
+    // Logout Handler sequence Destruction mapping
+    document.getElementById("logoutBtn").addEventListener("click", function(){
+        if(confirm("Are you sure you want to logout?")){
+            const sessionId = sessionStorage.getItem("session_id");
+
+            if (sessionId) {
+                fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                })
+                .then(() => {
+                    sessionStorage.clear(); 
+                    localStorage.clear();
+                    window.location.href = "/";
+                }).catch(() => {
+                    sessionStorage.clear(); 
+                    localStorage.clear();
+                    window.location.href = "/";
+                });
+            } else {
+                sessionStorage.clear(); 
+                localStorage.clear();
+                window.location.href = "/";
+            }
+        }
     });
-}
+
+    // Setup Live Date Header string
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateElem = document.getElementById("date");
+    if(dateElem) dateElem.innerHTML = new Date().toLocaleDateString('en-US', dateOptions);
+
+    // BACKGROUND SYNC ENGINE (ON SHUTDOWN BOOTUP INTERVAL)
+    document.addEventListener("DOMContentLoaded", function () {
+        loadDashboardBlueprints(); // Profiles data check & Birthday mapping
+        loadDashboardData();       // Core initialization counts render
+        
+        // HAR 10 SECOND ME AUTOMATIC BACK-END SYNC LOOP RUNNING LOOP
+        setInterval(loadDashboardData, 10000);
+    });
 </script>
 </body>
 </html>
